@@ -82,8 +82,6 @@ class CliTestObserve(unittest.TestCase):
         args = ["observe", "Wintap.exe"]
         cli = CommandLine(args)
 
-        print(cli.args)
-
         cli.observe(cli.args)
         self.observe_mock.assert_called_once_with("Wintap.exe")
         self.checksum_mock.assert_not_called()
@@ -120,6 +118,99 @@ class CliTestObserve(unittest.TestCase):
         cli.observe(cli.args)
         self.observe_mock.assert_called_once_with("Wintap.exe")
         self.checksum_mock.assert_not_called()
+
+class CliTestParse(unittest.TestCase):
+    def setUp(self):
+        # patch parse, write_database, upload and configure logging functions
+        parse_patch = patch("eyeon.cli.eyeon.parse.Parse")
+        compress_patch=patch("eyeon.cli.eyeon.upload.compress_file")
+        upload_patch=patch("eyeon.cli.eyeon.upload.upload")
+        log_patcher=patch("eyeon.cli.CommandLine._configure_logger", return_value=None)
+        
+        self.mock_log=log_patcher.start()
+        self.mock_parse=parse_patch.start()
+        self.mock_upload=upload_patch.start()
+        self.mock_compress=compress_patch.start()
+
+        self.addCleanup(parse_patch.stop)
+        self.addCleanup(upload_patch.stop)
+        self.addCleanup(log_patcher.stop)
+        self.addCleanup(compress_patch.stop)
+
+    def test_parse_no_outdir(self):
+        args = ["parse", "/dev/null"]
+        cli = CommandLine(args)
+
+        self.assertIsNone(cli.args.output_dir)
+
+        cli.parse(cli.args)
+        self.mock_parse.assert_called_with("/dev/null")
+
+        self.mock_parse.return_value.assert_called_once_with(
+        result_path="./results",
+        threads=1,
+        )
+        self.mock_parse.return_value.write_database.assert_not_called()
+        self.mock_compress.assert_not_called()
+        self.mock_upload.assert_not_called()
+
+    def test_parse_outdir(self):
+        args = ["parse", "/dev/null", "-o", "/tmp/test/outdir"]
+        cli = CommandLine(args)
+
+        self.assertIsNotNone(cli.args.output_dir)
+
+        cli.parse(cli.args)
+        self.mock_parse.assert_called_with("/dev/null")
+
+        self.mock_parse.return_value.assert_called_once_with(
+        result_path="/tmp/test/outdir",
+        threads=1,
+        )
+        self.mock_parse.return_value.write_database.assert_not_called()
+        self.mock_compress.assert_not_called()
+        self.mock_upload.assert_not_called()
+
+
+    def test_parse_database(self):
+        args = ["parse", "/dev/null", "-d", "/tmp/test.db"]
+        cli = CommandLine(args)
+
+        self.assertIsNone(cli.args.output_dir)
+
+        cli.parse(cli.args)
+        self.mock_parse.assert_called_with("/dev/null")
+
+        self.mock_parse.return_value.assert_called_once_with(
+        result_path="./results",
+        threads=1,
+        )
+        self.mock_parse.return_value.write_database.assert_called_with(
+            "/tmp/test.db",
+            "./results"
+        )
+        self.mock_compress.assert_not_called()
+        self.mock_upload.assert_not_called()
+
+    def test_parse_upload(self):
+        args = ["parse", "/dev/null", "--upload"]
+        cli = CommandLine(args)
+
+        self.assertIsNone(cli.args.output_dir)
+
+        cli.parse(cli.args)
+        self.mock_parse.assert_called_with("/dev/null")
+
+        self.mock_parse.return_value.assert_called_once_with(
+        result_path="./results",
+        threads=1,
+        )
+        self.mock_parse.return_value.write_database.assert_not_called()
+        self.mock_compress.assert_called_with(
+            './results',
+            compression='tar.gz'
+        )
+        self.mock_upload.assert_called_once()
 
 class CliTestLogger(unittest.TestCase):
     def setUp(self):
