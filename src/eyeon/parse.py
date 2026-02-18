@@ -7,6 +7,8 @@ import os
 import duckdb
 import time
 from importlib.resources import files
+import threading # allows the monitor to run concurrently without blocking multiprocessing 
+from multiprocessing import Pool, Manager
 
 
 class Parse:
@@ -79,9 +81,6 @@ class Parse:
             bar.text(f"{len(files)} files collected")
 
         if threads > 1:
-            import threading # allows the monitor to run concurrently without blocking multiprocessing 
-            from multiprocessing import Pool, Manager
-
             manager=Manager()
             progress_map= manager.dict()
 
@@ -90,7 +89,6 @@ class Parse:
                 HANG_THRESHOLD=120
 
                 while True:
-                    time.sleep(CHECK_INTERVAL) #sleep so it's not infinitely spinning
                     now = time.time()
                     workers=list(progress_map.items())
                     if not workers:
@@ -104,6 +102,8 @@ class Parse:
                             logger.warning(
                                 f"[monitor] - possible hung process: pid={pid} processing {file} for {duration:.1f}s"
                             )
+                    
+                    time.sleep(CHECK_INTERVAL) #sleep so it's not infinitely spinning
 
             monitor_thread = threading.Thread(target=monitor, daemon=True) #run monitor thread in the background, removes when finished
             monitor_thread.start()
