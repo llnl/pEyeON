@@ -4,12 +4,14 @@ import dlt
 import schema_ext
 
 @st.cache_resource
-def get_conn(db_path: str = "eyeon_metadata.duckdb"):
+def get_conn(db_path: str = "schemas/eyeon_metadata.duckdb", schema="silver"):
     """
     Returns a cached DB connection shared across all pages and reruns.
     cache_resource keeps this alive for the lifetime of the app session.
+    Silver is the default as it is generally used the most.
     """
     conn = duckdb.connect(db_path)
+    conn.execute(f"use {schema}")
     return conn
 
 # Load schema (cached)

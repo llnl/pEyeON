@@ -167,7 +167,7 @@ with st.sidebar:
 
     # Schema selection inside the same expander context
     # Default to the "raw" schema
-    cur_schema = st.selectbox("Schema to use", schema_list, index=schema_list.index('raw'))
+    cur_schema = st.selectbox("Schema to use", schema_list, index=schema_list.index('bronze'))
 
     if cur_schema is not None:
         db.get_conn().sql(f"use {cur_schema}")

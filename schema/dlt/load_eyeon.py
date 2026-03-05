@@ -8,6 +8,8 @@ from datetime import datetime
 import socket
 import os
 import re
+import duckdb
+import schema_blame
 
 # Validate UUIDs
 UUID_RE = re.compile(r'"uuid"\s*:\s*"([^"]+)"')
@@ -188,20 +190,34 @@ def main(argv=None) -> None:
 
     args = parser.parse_args()
 
-    # Define and run the pipeline
+    DB_PATH = "schemas/eyeon_metadata.duckdb"  # choose an absolute path if you want it stable across cwd changes
+    conn = duckdb.connect(DB_PATH) # Defining this way allows for direct access to the database after the run with a native duckdb connection.
+
+    src = eyeon_source(args.utility_id, args.source, args.depth)  # has 4 resources
+
+    bronze = src.with_resources("raw_json")
+    silver = src.with_resources("batch_resource", "files_resource","json_errors", "metadata_resource")
+
     pipeline = dlt.pipeline(
-        pipeline_name="eyeon_metadata", # Used as database filename
-        destination="duckdb",
-        dataset_name="raw", # Used as schema for tables
+        pipeline_name="eyeon_metadata",
+        destination=dlt.destinations.duckdb(conn),
+        dataset_name="bronze",                 # default schema (can override per run)
         dev_mode=False,
-        export_schema_path="schemas"
+        export_schema_path="schemas",
     )
-    load_info = pipeline.run(eyeon_source(args.utility_id, args.source, args.depth))
+
+    bronze_info = pipeline.run(bronze)  # loads res1,res2 into bronze schema
+    silver_info = pipeline.run(silver, dataset_name="silver")  # loads res3,res4 into silver schema
+
+#    load_info = pipeline.run(eyeon_source(args.utility_id, args.source, args.depth))
+
+    # Process any schema changes and perist in the database
+    schema_blame.materialize_schema_blame(conn)
 
     # Access schema changes from the current run
     # Note: this uses the metadata that is written to a file by DLT. 
     # A more comprehensive approach is implemented in `schema_blame.py`
-    for package in load_info.load_packages:
+    for package in silver_info.load_packages:
         for table_name, table in package.schema_update.items():
             for column_name, column in table["columns"].items():
                 print(f"Table: {table_name}, Column: {column_name}, Type: {column['data_type']}")

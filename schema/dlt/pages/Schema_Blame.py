@@ -9,7 +9,7 @@ Run with:
 
 import json
 import dlt
-import duckdb
+import db
 import pandas as pd
 import streamlit as st
 import altair as alt
@@ -30,19 +30,8 @@ st.set_page_config(
     layout="wide",
 )
 
-# ---------------------------------------------------------------------------
-# Connection (cached so we don't reopen every rerun)
-# ---------------------------------------------------------------------------
-
-@st.cache_resource
-def get_connection():
-    pipeline = dlt.attach(pipeline_name="eyeon_metadata")
-    client = pipeline.sql_client()
-    client.__enter__()
-    return client.native_connection
-
-
-conn = get_connection()
+# Get a db connection using the library method.
+conn = db.get_conn(schema="silver")
 
 # ---------------------------------------------------------------------------
 # Sidebar — controls
