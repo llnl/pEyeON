@@ -40,7 +40,7 @@ conn = db.get_conn(schema="silver")
 st.sidebar.title("🔬 Schema Blame")
 st.sidebar.caption("eyeon_metadata pipeline")
 
-if st.sidebar.button("🔄 Refresh (run materialize)", use_container_width=True):
+if st.sidebar.button("🔄 Refresh (run materialize)", width='stretch'):
     n = materialize_schema_blame(conn)
     if n:
         st.sidebar.success(f"Wrote {n} new change(s)")
@@ -187,7 +187,7 @@ bar = (
     )
     .properties(height=300)
 )
-st.altair_chart(bar, use_container_width=True)
+st.altair_chart(bar, width='stretch')
 
 st.divider()
 
@@ -231,7 +231,7 @@ heatmap = (
     )
     .properties(height=max(200, len(table_order) * 22))
 )
-st.altair_chart(heatmap, use_container_width=True)
+st.altair_chart(heatmap, width='stretch')
 
 st.divider() # blame + sample rows for a specific column
 # ---------------------------------------------------------------------------

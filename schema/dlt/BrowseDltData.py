@@ -88,7 +88,7 @@ def render_table_level(table:EnrichedTable, parent_row=None, level=0, key_prefix
     
     event = st.dataframe(
         df,
-        use_container_width=True,
+        width='stretch',
         hide_index=True,
         on_select="rerun",
         selection_mode="single-row",
@@ -167,7 +167,7 @@ with st.sidebar:
 
     # Schema selection inside the same expander context
     # Default to the "raw" schema
-    cur_schema = st.selectbox("Schema to use", schema_list, index=schema_list.index('bronze'))
+    cur_schema = st.selectbox("Schema to use", schema_list, index=schema_list.index('silver'))
 
     if cur_schema is not None:
         db.get_conn().sql(f"use {cur_schema}")
