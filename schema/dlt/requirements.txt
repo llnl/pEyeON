@@ -1,3 +1,4 @@
 dlt[hub]>=1.22.0
 streamlit
 duckdb
+dynaconf

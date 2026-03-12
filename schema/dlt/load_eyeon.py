@@ -9,7 +9,7 @@ import socket
 import os
 import re
 import duckdb
-import schema_blame
+import utils.schema_blame as schema_blame
 
 # Validate UUIDs
 UUID_RE = re.compile(r'"uuid"\s*:\s*"([^"]+)"')

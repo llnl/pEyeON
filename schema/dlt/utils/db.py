@@ -1,7 +1,7 @@
 import streamlit as st
 import duckdb
 import dlt
-import schema_ext
+import utils.schema_ext as schema_ext
 
 @st.cache_resource
 def get_conn(db_path: str = "schemas/eyeon_metadata.duckdb", schema="silver"):
