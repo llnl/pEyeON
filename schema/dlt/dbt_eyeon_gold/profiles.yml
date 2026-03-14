@@ -1,0 +1,8 @@
+eyeon_gold:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: schemas/eyeon_metadata.duckdb
+      threads: 4
+      schema: gold

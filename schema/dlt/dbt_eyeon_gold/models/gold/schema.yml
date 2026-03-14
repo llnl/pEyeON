@@ -1,0 +1,9 @@
+version: 2
+
+models:
+  - name: gold_files
+    columns:
+      - name: uuid
+        tests:
+          - not_null
+          - unique

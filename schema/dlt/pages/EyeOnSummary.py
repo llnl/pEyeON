@@ -19,7 +19,8 @@ class LandingPage(BasePageLayout):
 
         with st.expander("batches", expanded=True):
             # Hosts, labels, etc over time. Produces a constant vertical size, so its a good default for any size data set
-            batches = db.get_conn().sql('select b.*, count(o.*) filter (o.uuid is not null) Observations from silver.batch_info b left outer join silver.raw_obs o on o._dlt_load_id=b._dlt_load_id group by all order by b._dlt_load_id').df()
+            #batches = db.get_conn().sql('select b.*, count(o.*) filter (o.uuid is not null) Observations from silver.batch_info b left outer join silver.raw_obs o on o._dlt_load_id=b._dlt_load_id group by all order by b._dlt_load_id').df()
+            batches = db.get_conn().sql('from gold.batch_summary order by utility_id').df()
             st.dataframe(batches)
 
         

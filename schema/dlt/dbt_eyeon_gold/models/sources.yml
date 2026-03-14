@@ -1,0 +1,15 @@
+version: 2
+
+sources:
+  - name: silver
+    schema: silver
+    tables:
+      - name: raw_obs
+      - name: raw_obs__filetype
+      - name: batch_info
+      - name: metadata_elf_file
+      - name: metadata_java_file
+      - name: metadata_mach_o_file
+      - name: metadata_native_lib_file
+      - name: metadata_ole_file
+      - name: metadata_pe_file
