@@ -28,6 +28,18 @@ def sanitize_ole_metadata(item):
                 # Log and null out problematic thumbnails
                 print(f"Error sanitizing thumbnail for {item.get('uuid', 'unknown')}: {e}")
                 item['ole']['thumbnail'] = None
+    if 'elfNote' in item and item['elfNote'] is not None:
+        for elfNote in item['elfNote']:
+            if 'descdata' in elfNote and elfNote['descdata'] is not None:
+                try:
+                    # Base64 encode binary data
+                    elfNote['descdata'] = base64.b64encode(elfNote['descdata'].encode('latin-1')).decode('ascii')
+                    print(f"Base64 encoded descdata for ...")
+                except Exception as e:
+                    # Log and null out problematic descdata
+                    print(f"Error sanitizing descdata for {item.get('uuid', 'unknown')}: {e}")
+                    elfNote['descdata'] = None
+
     return item
 
 def drop_empty_lists(obj):
