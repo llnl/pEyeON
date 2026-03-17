@@ -72,7 +72,8 @@ def eyeon_source(utility_id, source, depth):
             yield {
                 "uuid": match.group(1) if match else None,
                 "json": content,
-                "source_file": os.path.basename(path),
+                "source_path":  os.path.dirname(path),
+                'source_file': os.path.basename(path),
             }
     # Resource for the main files table
     @dlt.resource(
@@ -91,12 +92,16 @@ def eyeon_source(utility_id, source, depth):
                         raise(Exception(f"No UUID or invalid defined for file: {path}"))
                     # Remove metadata which will prevent DLT from trying to unravel it and persist here. That gets done with custom code in `metadata_resource()`
                     data.pop("metadata", None)
+                    # Add the source path and filename
+                    data['source_path'] = os.path.dirname(path)
+                    data['source_file'] = os.path.basename(path)
                 yield drop_empty_lists(data)
             except Exception as e:
                 # Yield error record instead of failing
                 logging.error(f"JSON Error: {str(e)}\n\n{str(path)}")
                 _json_errors.append({
-                        '_source_file': str(path),
+                        'source_path':  os.path.dirname(path),
+                        'source_file':  os.path.basename(path),
                         '_error': str(e),
                         '_parse_failed': True,
                         '_code_source': 'file_resource',
@@ -150,10 +155,11 @@ def eyeon_source(utility_id, source, depth):
             except Exception as e:
                 # Yield error record instead of failing
                 _json_errors.append({
-                        '_source_file': str(path),
-                        '_error': str(e),
-                        '_parse_failed': True,
-                        '_code_source': 'metadata_resource',
+                        'source_path':  os.path.dirname(path),
+                        'source_file':  os.path.basename(path),
+                        'error': str(e),
+                        'parse_failed': True,
+                        'code_source': 'metadata_resource',
                         '_metadata_table_name': "json_errors"
                     })
                 
