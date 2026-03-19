@@ -52,10 +52,10 @@ eyeon="eyeon.cli:main"
 where = ["src"]
 
 [tool.setuptools_scm]
-version_file = "src/_version.py"
+version_file = "src/eyeon/_version.py"
 
 [tool.setuptools.package-data]
-database = ["*"]
+database = ["src/*"]
 
 [tool.coverage.run]
 omit =["/usr/*"] # omit code coverage scans for /usr/*
