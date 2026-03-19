@@ -15,8 +15,7 @@ import subprocess
 import re
 import duckdb
 from importlib.resources import files
-
-# from importlib.metadata import version
+from importlib.metadata import version
 from pathlib import Path
 import pluggy
 from surfactant.plugin.manager import get_plugin_manager
@@ -142,7 +141,7 @@ class Observe:
         self.sha1 = Observe.create_hash(file, "sha1")
         self.sha256 = Observe.create_hash(file, "sha256")
         self.set_ssdeep(file)
-        # self.eyeon_version = version("peyeon")
+        self.eyeon_version = version("peyeon")
 
         logger.debug("end of init")
 
