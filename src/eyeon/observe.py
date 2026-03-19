@@ -11,6 +11,7 @@ import json
 import os
 import pprint
 import subprocess
+import threading
 
 import re
 import duckdb
@@ -21,7 +22,6 @@ from surfactant.plugin.manager import get_plugin_manager
 from surfactant.sbomtypes._software import Software
 from queue import Queue
 from uuid import uuid4
-from sys import stderr
 
 from loguru import logger
 
@@ -78,12 +78,8 @@ class Observe:
             Windows File Properties -- OS, Architecture, File Info, etc.
     """
 
-    def __init__(self, file: str, log_level: str = "ERROR", log_file: str = None) -> None:
-        logger.remove()
-        fmt = "{time:%Y-%m-%d %H:%M:%S,%f} - {name} - {level} - {message}"
-        if log_file:
-            logger.add(log_file, level=log_level, format=fmt)
-        logger.add(stderr, level=log_level, format=fmt)
+    def __init__(self, file: str) -> None:
+        logger.debug(f"initializing observe object for {file}")
 
         self.uuid = str(uuid4())
         stat = os.stat(file)
@@ -94,7 +90,9 @@ class Observe:
         # surfactant stuff
         mgr = get_plugin_manager()
         self.filetype = mgr.hook.identify_file_type(filepath=file, context=None)
+
         if (self.filetype is None) or (self.filetype == []):
+            logger.debug(f"Unknown file type for {file}")
             self.metadata = {
                 "Unknown": {
                     "description": "some other file not in"
@@ -107,6 +105,7 @@ class Observe:
             #     print(self.filetype)
             #     raise Exception("Multiple filetypes")
             # self.filetype = self.filetype[0]
+            logger.debug(f"Setting metadata for {file}")
             self.set_metadata(file, mgr)
 
         if self.filetype is None:  # md files etc have no filetype
@@ -118,6 +117,9 @@ class Observe:
             self.certs = {}
             self.set_signatures(file)
             self.set_issuer_sha256()
+        
+        else:
+            self.imphash = "N/A"
 
         if "ELF" in self.filetype:
             self.set_telfhash(file)
@@ -125,9 +127,6 @@ class Observe:
         if "JAVACLASS" in self.filetype:
             if "description" not in self.metadata:  # if the environment is not missing javatools
                 self.prep_javaclass_metadata()
-
-        else:
-            self.imphash = "N/A"
 
         self.set_magic(file)
         self.modtime = datetime.datetime.fromtimestamp(
@@ -141,7 +140,7 @@ class Observe:
         self.sha256 = Observe.create_hash(file, "sha256")
         self.set_ssdeep(file)
 
-        logger.debug("end of init")
+        logger.debug(f"end of init for {file}")
 
     @staticmethod
     def create_hash(file, hash):
@@ -175,6 +174,8 @@ class Observe:
         """
         import pefile
 
+        logger.debug(f"impash for {file}")
+
         pef = pefile.PE(file)
         self.imphash = pef.get_imphash()
 
@@ -183,6 +184,8 @@ class Observe:
         Runs LIEF signature validation and collects certificate chain.
         """
         import lief
+
+        logger.debug(f"starting set LEIF sigs for {file}")
 
         def verif_flags(flag: lief.PE.Signature.VERIFICATION_FLAGS) -> str:
             """
@@ -212,7 +215,7 @@ class Observe:
                     if len(vf):
                         vf += " | "
                     vf += v
-
+            logger.debug(f"finished LEIF sigs for {file}")
             return vf
 
         def hashit(c: lief.PE.x509):
@@ -222,6 +225,9 @@ class Observe:
 
         def cert_parser(cert: lief.PE.x509) -> dict:
             """lief certs are messy. convert to json data"""
+
+            logger.debug(f"starting cert parse for LEIF sigs")
+
             crt = str(cert).split("\n")
             cert_d = {}
             for line in crt:
@@ -274,12 +280,15 @@ class Observe:
                 }
             )
 
+        logger.debug(f"finished cert parse for LEIF sigs")
+
     def set_issuer_sha256(self) -> None:
         """
         Parses the certificates to build issuer_sha256 chain
         The match between issuer and subject name is case insensitive,
         as per RFC 5280 4.1.2.4 section 7.1
         """
+        logger.debug("identifying issuer")
         subject_sha = {}  # dictionary that maps subject to sha256
         for sig in self.signatures:
             for cert in sig["certs"]:  # set mappings
@@ -300,13 +309,37 @@ class Observe:
         except ModuleNotFoundError:
             logger.warning("tlsh and telfhash are not installed.")
             return
-        self.telfhash = telfhash.telfhash(file)[0]["telfhash"]
+        
+        def worker()->None:
+            '''
+            Worker for telfhash since it can hang indefinitely on select files
+            '''
+            try:
+                logger.debug(f"getting elf hash for {file}")
+                self.telfhash = telfhash.telfhash(file)[0]["telfhash"]
+                
+            except Exception as e:
+                logger.debug(f"telfhash failed for {file}: {e}")
+                return 
+            
+        timeout=30
+        thread = threading.Thread(target=worker, daemon=True)
+        thread.start()
+        thread.join(timeout)
+
+        if thread.is_alive():
+            logger.warning(
+                f"telfhash timed out for {file} after {timeout} seconds"
+            )
+            return
+        
 
     def set_ssdeep(self, file: str) -> None:
         """
         Computes fuzzy hashing using ssdeep.
         See https://ssdeep-project.github.io/ssdeep/index.html.
         """
+        logger.debug(f"starting ssdeep for {file}")
         try:
             out = subprocess.run(
                 ["ssdeep", "-b", file], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
@@ -317,11 +350,12 @@ class Observe:
         out = out.split("\n")[1]  # header/hash/emptystring
         out = out.split(",")[0]  # hash/filename
         self.ssdeep = out
+        logger.debug(f"finished ssdeep for {file}")
 
     def set_metadata(self, file: str, mgr: pluggy.PluginManager) -> None:
         sw = Software()  # dummy
         q = Queue()  # dummy
-        kwargs = {
+        kwargs = { #possible args for surfactant plugins
             "sbom": None,
             "software": sw,
             "filename": file,
@@ -332,22 +366,51 @@ class Observe:
             "software_field_hints": [],
             "omit_unrecognized_types": None,
         }
-        try:  # surfactant call; have to get hacky due to pluggy
-            self.metadata = {}
-            for hk_impl in mgr.hook.extract_file_info.get_hookimpls():
-                m = hk_impl.function(**{k: v for k, v in kwargs.items() if k in hk_impl.argnames})
-                if m:
-                    plugin_name = hk_impl.plugin_name.split(".")[-1]
-                    redo = self.metadata.get(plugin_name)
-                    if redo is not None:
-                        raise Exception(f"duplicate {self.filetype} metadata for {file}")
-                    self.metadata[plugin_name] = m
 
-        except Exception as e:
-            logger.error(file, e)
-            self.metadata = {}
+        logger.debug(f"trying surfactant for {file}")
 
-        if (self.metadata is None) or (self.metadata == []):
+        self.metadata={}
+
+        hooks=mgr.hook.extract_file_info.get_hookimpls()
+
+        for plugin in hooks:
+            plugin_name=plugin.plugin_name.split(".")[-1]
+            logger.debug(f"trying hook: {plugin_name}")
+
+            filtered_kwargs={}
+
+            #if plugin function takes argument, add it to filtered 
+            for k, v in kwargs.items():
+                if k in plugin.argnames: 
+                    filtered_kwargs[k]=v
+                
+            logger.info(f"filtered args {filtered_kwargs} for {plugin_name}")
+
+            try:
+                result=plugin.function(**filtered_kwargs)
+            except Exception as e:
+                # Log plugin failure but continue with other plugins
+                logger.exception(
+                    f"Fail - Plugin {plugin_name} failed on file {file}: {e}"
+                )
+                continue
+
+            if not result:
+                # Plugin returned nothing useful, just skip it
+                logger.debug(f"Plugin {plugin_name} returned no metadata for {file}")
+                continue
+
+            logger.debug(f"Success - Plugin {plugin_name} produced metadata: {result}")
+
+            if plugin_name in self.metadata:
+                raise Exception(
+                    f"duplicate {self.filetype} metadata for {file} from plugin {plugin_name}"
+                )
+
+            self.metadata[plugin_name] = result
+
+        if not self.metadata:
+            logger.debug(f"No plugin produced metadata for {file}, using Unknown fallback")
             self.metadata = {
                 "Unknown": {
                     "description": "some other file not in"

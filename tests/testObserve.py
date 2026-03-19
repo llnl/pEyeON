@@ -154,38 +154,7 @@ class ObservationTestCase5(unittest.TestCase):
     @classmethod
     def setUpClass(self) -> None:
         self.OBS = observe.Observe(
-            "tests/binaries/NET_app_config_test_no1/ConsoleApp2.exe",
-            log_level="INFO",
-            log_file="tests/observe.log",
-        )
-
-    def testLog(self):  # check log is created and correct info logged
-        self.assertTrue(os.path.exists("tests/observe.log"))
-        with open("tests/observe.log", "r") as f:
-            log = f.read()
-
-        messages = []
-        for line in log.split("\n", maxsplit=3):
-            # check log formatting is correct for each line
-            if line:
-                components = line.split(" - ")  # separator defined in observe
-                print(components)
-
-                # order should be a datetime, then name, then loglevel
-                try:
-                    dt.datetime.strptime(components[0], "%Y-%m-%d %H:%M:%S,%f")
-                except ValueError:
-                    self.fail()
-                # surfactant rekt all our logs
-                # self.assertEqual(components[1], "eyeon.observe")
-                self.assertIn(components[2], ["INFO", "WARNING"])
-                # print(components)
-                messages.append(components[3])
-
-        # check message correctly logged
-        self.assertIn(
-            "file tests/binaries/NET_app_config_test_no1/ConsoleApp2.exe has no signatures.",
-            messages,
+            "tests/binaries/NET_app_config_test_no1/ConsoleApp2.exe"
         )
 
     def testToString(self):
@@ -193,10 +162,6 @@ class ObservationTestCase5(unittest.TestCase):
             str(self.OBS)
         except Exception as e:
             self.fail(f"Observe.__str__ raised exception {e} unexpectedly!")
-
-    @classmethod
-    def tearDownClass(self):
-        os.remove("tests/observe.log")
 
 
 class ObservationTestCase6(unittest.TestCase):

@@ -1,13 +1,16 @@
 """
 CLI interface for EyeON tools.
 """
-
 import argparse
 
 import eyeon.observe
 import eyeon.parse
 import eyeon.checksum
+import eyeon.upload
 
+from loguru import logger
+from sys import stderr
+from pathlib import Path
 
 class CommandLine:
     """
@@ -147,6 +150,39 @@ class CommandLine:
         # self.args = parser.parse_args()
         # args.func(args)
 
+        # Configure logging
+        log_level = getattr(self.args, "log_level", None)
+        log_file = getattr(self.args, "log_file", None)
+        if log_level:
+            self._configure_logger(log_level, log_file)
+
+    def _configure_logger(self, log_level: str, log_file: str | None=None) -> None:
+        """
+        Configure global logging
+        
+        :param log_level: logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+            :type log_level: str
+        :param log_file: name and path for the log file
+            :type log_file: str | None
+        """
+
+        logger.remove()
+        fmt = "{time:%Y-%m-%d %H:%M:%S,%f} - {name} - {level} - {message}"
+
+        if log_file:
+            log_path=Path(log_file)
+            # Ensure parent directory exists first
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            # Delete the log file if it already exists
+            log_path.unlink(missing_ok=True)
+            logger.add(log_path, level=log_level, format=fmt)
+
+        # Always log to stderr for CLI
+        logger.add(stderr, level=log_level, format=fmt)
+
+        logger.debug("Logging configured - level {} - file {}", log_level, log_file)
+
+
     def observe(self, args) -> None:
         """
         Parser function.
@@ -154,11 +190,11 @@ class CommandLine:
         if args.checksum:
             checksum_data = eyeon.checksum.Checksum(args.filename, args.algorithm, args.checksum)
 
-            obs = eyeon.observe.Observe(args.filename, args.log_level, args.log_file)
+            obs = eyeon.observe.Observe(args.filename)
             obs.set_checksum_verification(checksum_data)
 
         else:
-            obs = eyeon.observe.Observe(args.filename, args.log_level, args.log_file)
+            obs = eyeon.observe.Observe(args.filename)
 
         if (outdir := args.output_dir) is None:
             outdir = "."
@@ -173,7 +209,7 @@ class CommandLine:
         Call to eyeon parser. Runs `observe` on files in path.
         """
 
-        p = eyeon.parse.Parse(args.dir, args.log_level, args.log_file)
+        p = eyeon.parse.Parse(args.dir)
         if (outdir := args.output_dir) is None:
             outdir = "./results"
 
