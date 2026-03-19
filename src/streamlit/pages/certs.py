@@ -26,6 +26,19 @@ class LandingPage(BasePageLayout):
         st.bar_chart(obs_times_df, x="ObsTime", y="NumRows")
         # st.dataframe(obs_times_df)
 
+        st.markdown("#### Issuers")
+        issuer_names_df = du.getdatafor(du.getcon(), "organizations")
+        print(issuer_names_df)
+        st.altair_chart(
+            alt.Chart(issuer_names_df)
+            .mark_arc()
+            .encode(theta=alt.Theta("NumRows:Q").stack(True), 
+                    radius=alt.Radius("NumRows").scale(type="sqrt", zero=True, rangeMin=20),
+                    color="State:N",
+            ),
+            use_container_width=True,
+        )
+
         st.markdown("#### RSA Key Sizes")
         key_sizes_df = du.getdatafor(du.getcon(), "rsa_key_sizes")
         # This horizontal barchart needs at least streamlit v1.36 I think
