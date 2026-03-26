@@ -3,7 +3,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "EyeON Observation",
   "type": "object",
-  "required": ["bytecount", "filename", "filetype", "magic", "md5", "observation_ts", "sha1", "sha256", "uuid"],
+  "required": ["bytecount", "eyeon_version", "filename", "filetype", "magic", "md5", "observation_ts", "sha1", "sha256", "uuid"],
   "properties": {
     "bytecount": {
       "type":"integer",
@@ -12,6 +12,10 @@
     "compiler": {
       "type": "string",
       "description": "Compiler Identifier"
+    },
+    "eyeon_version": {
+      "type": "string",
+      "description": "Eyeon release. This helps track data versions."
     },
     "filename": {
       "type": "string",

@@ -9,6 +9,7 @@ import json
 from eyeon import observe
 
 import jsonschema
+from importlib.metadata import version
 
 
 class ObservationTestCase(unittest.TestCase):
@@ -31,6 +32,7 @@ class ObservationTestCase(unittest.TestCase):
         self.assertIsInstance(self.OBS.observation_ts, str)
         self.assertEqual(self.OBS.permissions, "0o100644")
         self.assertCountEqual(self.OBS.filetype, ["A.OUT big"])
+        self.assertEqual(self.OBS.eyeon_version, version("peyeon"))
 
     @classmethod
     def tearDownClass(self) -> None:
@@ -64,6 +66,7 @@ class ObservationTestCase2(unittest.TestCase):
             len(self.OBS.signatures), 0
         )  # this file is unsigned, should have no signatures
         self.assertCountEqual(self.OBS.filetype, ["COFF"])
+        self.assertEqual(self.OBS.eyeon_version, version("peyeon"))
 
     def testValidateJson(self) -> None:
         with open("schema/observation.schema.json") as schem:
@@ -109,6 +112,7 @@ class ObservationTestCase3(unittest.TestCase):
         self.assertIsInstance(self.OBS.observation_ts, str)
         self.assertEqual(self.OBS.permissions, "0o100755")
         self.assertCountEqual(self.OBS.filetype, ["ELF"])
+        self.assertEqual(self.OBS.eyeon_version, version("peyeon"))
 
     @classmethod
     def tearDownClass(self) -> None:
@@ -141,6 +145,7 @@ class ObservationTestCase4(unittest.TestCase):
         self.assertIsInstance(self.OBS.observation_ts, str)
         self.assertEqual(self.OBS.permissions, "0o100644")
         self.assertCountEqual(self.OBS.filetype, ["JAVACLASS"])
+        self.assertEqual(self.OBS.eyeon_version, version("peyeon"))
 
     # def test_detect_it_easy(self) -> None:
     #     expected_output = (
@@ -185,6 +190,7 @@ class ObservationTestCase6(unittest.TestCase):
         self.assertEqual(self.OBS.permissions, "0o100755")
         self.assertEqual(len(self.OBS.signatures), 0)  # unsigned, should have no signatures
         self.assertCountEqual(self.OBS.filetype, ["MACHO64"])
+        self.assertEqual(self.OBS.eyeon_version, version("peyeon"))
 
     # def test_detect_it_easy(self) -> None:
     #     expected_output = (
@@ -258,6 +264,7 @@ class ObservationTestCase8(unittest.TestCase):
         self.assertIsInstance(self.OBS.observation_ts, str)
         self.assertEqual(self.OBS.permissions, "0o100755")
         self.assertCountEqual(self.OBS.filetype, ["ELF"])
+        self.assertEqual(self.OBS.eyeon_version, version("peyeon"))
 
     # def test_detect_it_easy(self) -> None:
     #     expected_output = (
@@ -288,6 +295,7 @@ class ObservationTestCase9(unittest.TestCase):
         self.assertIsInstance(self.OBS.observation_ts, str)
         self.assertEqual(self.OBS.permissions, "0o100644")
         self.assertCountEqual(self.OBS.filetype, ["OLE"])
+        self.assertEqual(self.OBS.eyeon_version, version("peyeon"))
 
 
 class ObservationTestCase10(unittest.TestCase):
@@ -321,6 +329,7 @@ class ObservationTestCase10(unittest.TestCase):
             "552f7bdcf1a7af9e6ce672017f4f12abf77240c78e761ac203d1d9d20ac89988",
         )
         self.assertCountEqual(self.OBS.filetype, ["PE"])
+        self.assertEqual(self.OBS.eyeon_version, version("peyeon"))
 
 
 class TestFilePermissions(unittest.TestCase):
@@ -344,6 +353,7 @@ class TestJSONSchema(unittest.TestCase):
             "filename": "little_386.aout",
             "bytecount": 4,
             "magic": "Linux/i386 demand-paged executable (ZMAGIC)",  # noqa: E501
+            "eyeon_version": "null",
             "md5": "90a2eac40885beab82e592192a2cadd1",
             "observation_ts": "2024-12-04 22:27:45",
             "sha1": "f265f86a2f7bde59b88a47e53c0893d66a55a6cc",
@@ -359,6 +369,7 @@ class TestJSONSchema(unittest.TestCase):
             "bytecount": 4,
             "magic": "Linux/i386 demand-paged executable (ZMAGIC)",  # noqa: E501
             "md5": "90a2eac40885beab82e592192a2cadd1",
+            "eyeon_version": "null",
             "observation_ts": "2024-12-04 22:27:45",
             "sha1": "f265f86a2f7bde59b88a47e53c0893d66a55a6cc",
             "sha256": "0dabc62368f8c774acf547ee84e794d172a72c0e8bb3c78d261a6e896ea60c42",
@@ -375,6 +386,7 @@ class TestJSONSchema(unittest.TestCase):
             "bytecount": "four",
             "magic": "Linux/i386 demand-paged executable (ZMAGIC)",  # noqa: E501
             "md5": "90a2eac40885beab82e592192a2cadd1",
+            "eyeon_version": "null",
             "observation_ts": "2024-12-04 22:27:45",
             "sha1": "f265f86a2f7bde59b88a47e53c0893d66a55a6cc",
             "sha256": "0dabc62368f8c774acf547ee84e794d172a72c0e8bb3c78d261a6e896ea60c42",
@@ -390,6 +402,7 @@ class TestJSONSchema(unittest.TestCase):
             "bytecount": 4,
             "magic": "Linux/i386 demand-paged executable (ZMAGIC)",  # noqa: E501
             "md5": "90a2eac40885beab82e592192a2cadd1",
+            "eyeon_version": "null",
             "observation_ts": "2024-12-04 22:27:45",
             "sha256": "0dabc62368f8c774acf547ee84e794d172a72c0e8bb3c78d261a6e896ea60c42",
             "uuid": "f1eba7e3-e4c0-43e8-91dc-009a85367517",
@@ -404,6 +417,7 @@ class TestJSONSchema(unittest.TestCase):
             "bytecount": 4,
             "magic": "Linux/i386 demand-paged executable (ZMAGIC)",  # noqa: E501
             "md5": "90a2eac40885beab82e592192a2cadd1",
+            "eyeon_version": "null",
             "observation_ts": "2024-12-04 22:27:45",
             "sha1": "f265f86a2f7bde59b88a47e53c0893d66a55a6cc",
             "sha256": "0dabc62368f8c774acf547ee84e794d172a72c0e8bb3c78d261a6e896ea60c42",

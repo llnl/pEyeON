@@ -7,6 +7,7 @@ CREATE TABLE observations (
     bytecount UBIGINT,
     filename VARCHAR,
 	filetype VARCHAR[],
+	eyeon_version VARCHAR,
     compiler VARCHAR,
     hosts VARCHAR[],
     parent VARCHAR,

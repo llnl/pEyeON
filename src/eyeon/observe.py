@@ -16,6 +16,7 @@ import threading
 import re
 import duckdb
 from importlib.resources import files
+from importlib.metadata import version
 from pathlib import Path
 import pluggy
 from surfactant.plugin.manager import get_plugin_manager
@@ -139,6 +140,7 @@ class Observe:
         self.sha1 = Observe.create_hash(file, "sha1")
         self.sha256 = Observe.create_hash(file, "sha256")
         self.set_ssdeep(file)
+        self.eyeon_version = version("peyeon")
 
         logger.debug(f"end of init for {file}")
 
@@ -163,9 +165,10 @@ class Observe:
         """
         try:
             import magic
+            self.magic = magic.from_file(file)
         except ImportError:
             logger.warning("libmagic1 or python-magic is not installed.")
-        self.magic = magic.from_file(file)
+            self.magic = "No python-magic present"
 
     def set_imphash(self, file: str) -> None:
         """
