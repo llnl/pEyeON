@@ -388,6 +388,7 @@ class TestJSONSchema(unittest.TestCase):
             "filename": "little_386.aout",
             "bytecount": 4,
             "magic": "Linux/i386 demand-paged executable (ZMAGIC)",  # noqa: E501
+            "eyeon_version": "null",
             "md5": "90a2eac40885beab82e592192a2cadd1",
             "observation_ts": "2024-12-04 22:27:45",
             "sha1": "f265f86a2f7bde59b88a47e53c0893d66a55a6cc",
@@ -403,6 +404,7 @@ class TestJSONSchema(unittest.TestCase):
             "bytecount": 4,
             "magic": "Linux/i386 demand-paged executable (ZMAGIC)",  # noqa: E501
             "md5": "90a2eac40885beab82e592192a2cadd1",
+            "eyeon_version": "null",
             "observation_ts": "2024-12-04 22:27:45",
             "sha1": "f265f86a2f7bde59b88a47e53c0893d66a55a6cc",
             "sha256": "0dabc62368f8c774acf547ee84e794d172a72c0e8bb3c78d261a6e896ea60c42",
@@ -419,6 +421,7 @@ class TestJSONSchema(unittest.TestCase):
             "bytecount": "four",
             "magic": "Linux/i386 demand-paged executable (ZMAGIC)",  # noqa: E501
             "md5": "90a2eac40885beab82e592192a2cadd1",
+            "eyeon_version": "null",
             "observation_ts": "2024-12-04 22:27:45",
             "sha1": "f265f86a2f7bde59b88a47e53c0893d66a55a6cc",
             "sha256": "0dabc62368f8c774acf547ee84e794d172a72c0e8bb3c78d261a6e896ea60c42",
@@ -434,6 +437,7 @@ class TestJSONSchema(unittest.TestCase):
             "bytecount": 4,
             "magic": "Linux/i386 demand-paged executable (ZMAGIC)",  # noqa: E501
             "md5": "90a2eac40885beab82e592192a2cadd1",
+            "eyeon_version": "null",
             "observation_ts": "2024-12-04 22:27:45",
             "sha256": "0dabc62368f8c774acf547ee84e794d172a72c0e8bb3c78d261a6e896ea60c42",
             "uuid": "f1eba7e3-e4c0-43e8-91dc-009a85367517",
@@ -448,6 +452,7 @@ class TestJSONSchema(unittest.TestCase):
             "bytecount": 4,
             "magic": "Linux/i386 demand-paged executable (ZMAGIC)",  # noqa: E501
             "md5": "90a2eac40885beab82e592192a2cadd1",
+            "eyeon_version": "null",
             "observation_ts": "2024-12-04 22:27:45",
             "sha1": "f265f86a2f7bde59b88a47e53c0893d66a55a6cc",
             "sha256": "0dabc62368f8c774acf547ee84e794d172a72c0e8bb3c78d261a6e896ea60c42",
