@@ -1,14 +1,14 @@
-import logging
 from alive_progress import alive_bar, alive_it
 from typing import Any
 
-# from .setup_log import logger  # noqa: F401
+from loguru import logger
 from .observe import Observe
 import os
 import duckdb
+import time
 from importlib.resources import files
-
-log = logging.getLogger("eyeon.parse")
+import threading # allows the monitor to run concurrently without blocking multiprocessing 
+from multiprocessing import Pool, Manager
 
 
 class Parse:
@@ -20,23 +20,9 @@ class Parse:
 
     dirpath : str
         A string specifying the folder to parse.
-
-    log_level : int, optional (default=logging.ERROR)
-        As logging level; defaults to ERROR.
-
-    log_file : str, optional (default=None)
-        A file to write logs. If None, will print log to console.
     """
 
-    def __init__(self, dirpath: str, log_level: int = logging.ERROR, log_file: str = None) -> None:
-        if log_file:
-            fh = logging.FileHandler(log_file)
-            fh.setFormatter(
-                logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-            )
-            logging.getLogger().handlers.clear()  # remove console log
-            log.addHandler(fh)
-        logging.getLogger().setLevel(log_level)
+    def __init__(self, dirpath: str) -> None:
         self.path = dirpath
 
     def _observe(self, file_and_path: tuple) -> None:
@@ -45,9 +31,34 @@ class Parse:
             o = Observe(file)
             o.write_json(result_path)
         except PermissionError:
-            log.warning(f"File {file} cannot be read.")
+            logger.warning(f"File {file} cannot be read.")
         except FileNotFoundError:
-            log.warning(f"No such file {file}.")
+            logger.warning(f"No such file {file}.")
+
+    def _observe_worker(self, args) -> None:
+        """
+        wrapper to handle and monitor observe workers. 
+        Assists in identifying problematic files
+
+        :param args: (file: str, result_path: str, progress_map: dict) 
+        """
+
+        file, result_path, progress_map = args
+
+        pid= os.getpid()
+        start_time=time.time()
+
+        progress_map[pid] = {
+            "file": file,
+            "start": start_time,
+        }
+
+        try:
+            self._observe((file, result_path))
+        finally:
+            # Clear the entry when done or on error
+            progress_map.pop(pid, None)
+
 
     def __call__(self, result_path: str = "./results", threads: int = 1) -> Any:
         with alive_bar(
@@ -70,16 +81,49 @@ class Parse:
             bar.text(f"{len(files)} files collected")
 
         if threads > 1:
-            from multiprocessing import Pool
+            manager=Manager()
+            progress_map= manager.dict()
+
+            def monitor():
+                CHECK_INTERVAL=30 #seconds between checks
+                HANG_THRESHOLD=120
+
+                while True:
+                    now = time.time()
+                    workers=list(progress_map.items())
+                    if not workers:
+                        continue
+                        
+                    for pid, info in workers:
+                        file=info.get("file")
+                        start=info.get("start", now)
+                        duration=now-start
+                        if duration > HANG_THRESHOLD:
+                            logger.warning(
+                                f"[monitor] - possible hung process: pid={pid} processing {file} for {duration:.1f}s"
+                            )
+                    
+                    time.sleep(CHECK_INTERVAL) #sleep so it's not infinitely spinning
+
+            monitor_thread = threading.Thread(target=monitor, daemon=True) #run monitor thread in the background, removes when finished
+            monitor_thread.start()
+
 
             with Pool(threads) as p:
                 with alive_bar(
-                    len(files), spinner="waves", title=f"Parsing with {threads} threads..."
+                    len(files), 
+                    spinner="waves", 
+                    title=f"Parsing with {threads} threads..."
                 ) as bar:
-                    for _ in p.imap_unordered(self._observe, files):
+                    # each worker gets the file, result_path, and the shared progress_map
+                    iterable = [
+                        (file, result_path, progress_map) for (file, result_path) in files
+                    ]
+                    for _ in p.imap_unordered(self._observe_worker, iterable):
                         bar()  # update the bar when a thread finishes
 
         else:
+            #Single process path (no inter‑process monitoring needed)
             for filet in alive_it(files, spinner="waves", title="Parsing files..."):
                 self._observe(filet)
 

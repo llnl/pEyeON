@@ -40,10 +40,7 @@ class CorruptFileTestCase(unittest.TestCase):
 
     def scan(self, badbinpath):
         # scan the corrupted binary
-        self.OBS = observe.Observe(
-            badbinpath, log_level=logging.INFO, log_file="tests/testBadSignatures.log"
-        )
-        self.assertTrue(os.path.isfile("tests/testBadSignatures.log"))
+        self.OBS = observe.Observe(badbinpath)
 
     def corruptedVarsExe(
         self, md5, sha1, sha256, filename, bytecount, sigflag, codeflag, magic=None
@@ -78,9 +75,7 @@ class CorruptFileTestCase(unittest.TestCase):
 
     @classmethod
     def tearDownClass(self):
-        os.remove("tests/testBadSignatures.log")
         os.remove(self.badbinpath)
-
 
 class WintapCertCorrupt(CorruptFileTestCase):
     def setUp(self):

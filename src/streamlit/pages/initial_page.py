@@ -5,6 +5,7 @@ from common.utils import sidebar_config
 from utils.config import settings
 import streamlit as st
 import common.dqautil as du
+import altair as alt
 
 
 class LandingPage(BasePageLayout):
@@ -23,6 +24,20 @@ class LandingPage(BasePageLayout):
         obs_times_df = du.getdatafor(du.getcon(), "observation_times")
         st.bar_chart(obs_times_df, x="ObsTime", y="NumRows")
         st.dataframe(obs_times_df)
+
+        ## detect it easy
+        st.markdown("Detect it Easy")
+        die_df = du.getdatafor(du.getcon(), "detect_it_easy")
+        st.altair_chart(
+            alt.Chart(die_df)
+            .mark_bar()
+            .encode(
+                x=alt.X("detect_it_easy", sort=None),
+                y="NumRows",
+            )
+            .interactive(),
+            use_container_width=True,
+        )
 
         # Proof-of-life debug info
         pf.debug_info()

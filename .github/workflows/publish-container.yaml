@@ -1,8 +1,10 @@
 name: Build and Push Image
 
 on:
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: ["publish package to PyPI"]  #must match the 'name:' in the publish-package file
+    types:
+      - completed
 
 env:
   REGISTRY: ghcr.io
@@ -10,6 +12,8 @@ env:
 
 jobs:
   build-and-push-image:
+    #only run if the package publish workflow succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     permissions:

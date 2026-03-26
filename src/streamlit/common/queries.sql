@@ -12,6 +12,14 @@ select
 count(*) Observations from observations
 ;
 
+
+-- Cluster and count detect_it_easy
+SELECT 
+--# name: detect_it_easy
+LOWER(SUBSTRING(REGEXP_EXTRACT(detect_it_easy, '\.([^.]*)$'), 0)) detect_it_easy, count(*) NumRows
+FROM observations group by all order by NumRows DESC LIMIT 30
+;
+
 -- Get raw data collection range, which means we need to ignore process data reconstructed from Windows logs, which are activitytype="refresh"
 select
 --# name: raw_data_range
