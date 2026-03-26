@@ -79,7 +79,7 @@ class Observe:
             Windows File Properties -- OS, Architecture, File Info, etc.
     """
 
-    def __init__(self, file: str, log_level: str = "ERROR", log_file: str = None) -> None:
+    def __init__(self, file: str, log_level: str = "ERROR", log_file: str |None = None) -> None:
         logger.remove()
         fmt = "{time:%Y-%m-%d %H:%M:%S,%f} - {name} - {level} - {message}"
         if log_file:
@@ -166,9 +166,10 @@ class Observe:
         """
         try:
             import magic
+            self.magic = magic.from_file(file)
         except ImportError:
             logger.warning("libmagic1 or python-magic is not installed.")
-        self.magic = magic.from_file(file)
+            self.magic = "No python-magic present"
 
     def set_imphash(self, file: str) -> None:
         """
