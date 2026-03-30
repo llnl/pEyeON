@@ -22,9 +22,6 @@ class LandingPage(BasePageLayout):
             #batches = db.get_conn().sql('select b.*, count(o.*) filter (o.uuid is not null) Observations from silver.batch_info b left outer join silver.raw_obs o on o._dlt_load_id=b._dlt_load_id group by all order by b._dlt_load_id').df()
             batches = db.get_conn().sql('from gold.batch_summary order by utility_id').df()
             st.dataframe(batches)
-
-        
-
     
 def main():
     page = LandingPage()

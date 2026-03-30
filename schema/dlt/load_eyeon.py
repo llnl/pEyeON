@@ -67,7 +67,7 @@ def eyeon_source(utility_id, source, depth):
             write_disposition="append"
     )
     def batch_resource():
-        yield {"_dlt_load_id": dlt.current.load_package_state()['load_id'], "run_ts": datetime.now(),"utility_id": utility_id, "source": source, "depth": depth, "hostname": socket.gethostname()}
+        yield {"_dlt_load_id": dlt.current.load_package_state()['load_id'], "run_ts": datetime.now(),"utility_id": utility_id, "source": source, "depth": depth, "hostname": socket.gethostname(), "schema_blame_hack": "FIXME"}
 
     # The raw JSON data from the file. Note that valid JSON is loaded into the "JSON" field, which is also JSON type in duckdb. If the JSON is invalid it will be loaded into json__v_text as a string.
     # The primary purpose of this table is forensics. If this doesn't prove valuable, it could be elimated and we can just go back to the original file.
@@ -192,13 +192,7 @@ def eyeon_source(utility_id, source, depth):
 
     return batch_resource(), files_resource(), metadata_resource(), errors_resource(), raw_json_resource()
 
-def main(argv=None) -> None:
-    logging.basicConfig(
-    level=logging.INFO,                  # Change to DEBUG if you need more verbosity
-    format='%(asctime)s | %(levelname)-8s | %(name)s | %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-    )
-
+def parse_args():
     parser = argparse.ArgumentParser(
         prog="load_eyeon.py", description="Load EyeOn JSON into raw tables."
     )
@@ -207,11 +201,19 @@ def main(argv=None) -> None:
     parser.add_argument('--depth', required=False, default=4, help='Depth that DLT will attempt to parse for complex types')
 
     args = parser.parse_args()
+    return vars(args)
+
+def main(utility_id, source, depth=4) -> None:
+    logging.basicConfig(
+    level=logging.INFO,                  # Change to DEBUG if you need more verbosity
+    format='%(asctime)s | %(levelname)-8s | %(name)s | %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    )
 
     DB_PATH = "schemas/eyeon_metadata.duckdb"  # choose an absolute path if you want it stable across cwd changes
     conn = duckdb.connect(DB_PATH) # Defining this way allows for direct access to the database after the run with a native duckdb connection.
 
-    src = eyeon_source(args.utility_id, args.source, args.depth)  # has 4 resources
+    src = eyeon_source(utility_id, source, depth)  # has 4 resources
 
     bronze = src.with_resources("raw_json")
     silver = src.with_resources("batch_resource", "files_resource","json_errors", "metadata_resource")
@@ -241,4 +243,5 @@ def main(argv=None) -> None:
                 print(f"Table: {table_name}, Column: {column_name}, Type: {column['data_type']}")
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    main(**args)

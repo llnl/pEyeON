@@ -370,7 +370,7 @@ def blame_summary(conn: duckdb.DuckDBPyConnection) -> pd.DataFrame:
             table_name,
             column_name,
             detail
-        FROM schema_blame
+        FROM silver.schema_blame
         ORDER BY version_to, table_name, column_name
     """).fetchdf()
 
@@ -436,7 +436,7 @@ def blame_for_column(table: str, column: str, conn: duckdb.DuckDBPyConnection) -
             b.change_type,
             b.detail,
             s.sample_row
-        FROM schema_blame b
+        FROM silver.schema_blame b
         LEFT JOIN schema_blame_samples s
             ON  s.version_to  = b.version_to
             AND s.table_name  = b.table_name
