@@ -215,9 +215,6 @@ def main(utility_id, source, depth=4) -> None:
 
     src = eyeon_source(utility_id, source, depth)  # has 4 resources
 
-    bronze = src.with_resources("raw_json")
-    silver = src.with_resources("batch_resource", "files_resource","json_errors", "metadata_resource")
-
     pipeline = dlt.pipeline(
         pipeline_name="eyeon_metadata",
         destination=dlt.destinations.duckdb(conn),
@@ -226,10 +223,11 @@ def main(utility_id, source, depth=4) -> None:
         export_schema_path="schemas",
     )
 
-    bronze_info = pipeline.run(bronze)  # loads res1,res2 into bronze schema
-    silver_info = pipeline.run(silver, dataset_name="silver")  # loads res3,res4 into silver schema
+    bronze = src.with_resources("raw_json")
+    silver = src.with_resources("batch_resource", "files_resource","json_errors", "metadata_resource")
 
-#    load_info = pipeline.run(eyeon_source(args.utility_id, args.source, args.depth))
+    bronze_info = pipeline.run(bronze)  # loads raw_json into bronze schema, no parsing of JSON
+    silver_info = pipeline.run(silver, dataset_name="silver")  # Parses JSON into several different tables into silver schema
 
     # Process any schema changes and perist in the database
     schema_blame.materialize_schema_blame(conn)

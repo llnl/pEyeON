@@ -8,6 +8,8 @@ import os
 import subprocess
 import load_eyeon
 from dbt.cli.main import dbtRunner, dbtRunnerResult
+import pandas as pd
+from datetime import datetime
 
 
 def app_base_config():
@@ -19,16 +21,70 @@ def app_base_config():
     if db.exists():
         st.markdown("Virtual Main Page: Select a page from the sidebar!!")
     else:
-        with st.form(key="init_db_form"):
-            st.markdown("Initialize Database")
-            batch_dir = st.text_input("Directory path", placeholder="/path/to/data")
+        init_app_form()
 
-            submitted = st.form_submit_button("Submit")
-            if submitted:
+
+def init_app_form():
+    with st.form(key="init_db_form"):
+        st.markdown("Initialize Database")
+        utility_id = st.text_input("Utility ID")
+        batch_dir = st.text_input(
+            "JSON Directory path", placeholder="/path/to/data"
+        )
+        database_path = st.text_input(
+            "DB Directory path", placeholder="/path/to/data"
+        )
+
+        submitted = st.form_submit_button("Submit")
+        if submitted:
+            errors: list[str] = []
+
+            # Utility ID: required, string with no whitespace.
+            utility_id_clean = (utility_id or "").strip()
+            if not utility_id_clean:
+                errors.append("Utility ID is required.")
+            elif any(ch.isspace() for ch in utility_id_clean):
+                errors.append(
+                    "Utility ID must not contain spaces or other whitespace."
+                )
+
+            # JSON input directory: must exist and contain JSON files.
+            batch_path = Path((batch_dir or "").strip()).expanduser()
+            if not str(batch_path):
+                errors.append("JSON Directory path is required.")
+            elif not batch_path.exists():
+                errors.append(f"JSON Directory path does not exist: {batch_path}")
+            elif not batch_path.is_dir():
+                errors.append(
+                    f"JSON Directory path must be a directory: {batch_path}"
+                )
+            elif not any(batch_path.glob("*.json")):
+                errors.append(
+                    f"No '*.json' files found in: {batch_path} (EyeOn loader reads only this directory, not subfolders)"
+                )
+
+            # DB directory: must exist and be writable. (Not wired through yet, but validate now.)
+            db_dir_path = Path((database_path or "").strip()).expanduser()
+            if not str(db_dir_path):
+                errors.append("DB Directory path is required.")
+            elif not db_dir_path.exists():
+                errors.append(f"DB Directory path does not exist: {db_dir_path}")
+            elif not db_dir_path.is_dir():
+                errors.append(
+                    f"DB Directory path must be a directory: {db_dir_path}"
+                )
+            elif not os.access(str(db_dir_path), os.W_OK):
+                errors.append(f"DB Directory path is not writable: {db_dir_path}")
+
+            if errors:
+                for msg in errors:
+                    st.error(msg)
+            else:
                 with st.spinner("Initializing..."):
                     db.init()
-                    load_data(batch_dir)
+                    load_data(str(batch_path))
                     run_dbt()
+
 
 def sidebar_config(pages):
     st.sidebar.image("EyeOn_logo.png", width=120)
@@ -39,14 +95,22 @@ def sidebar_config(pages):
         st.sidebar.page_link(page.filename, label=page.label)
     sidebar_db_chooser()
 
+
 def _db_settings():
-    schema_list = [s[0] for s in db.get_conn().execute(
-        "SELECT distinct schema_name FROM information_schema.schemata order by all"
-    ).fetchall()]
+    schema_list = [
+        s[0]
+        for s in db.get_conn()
+        .execute(
+            "SELECT distinct schema_name FROM information_schema.schemata order by all"
+        )
+        .fetchall()
+    ]
 
     # Schema selection inside the same expander context
     # Default to the "raw" schema
-    cur_schema = st.selectbox("Schema to use", schema_list, index=schema_list.index('silver'))
+    cur_schema = st.selectbox(
+        "Schema to use", schema_list, index=schema_list.index("silver")
+    )
 
     if cur_schema is not None:
         db.get_conn().sql(f"use {cur_schema}")
@@ -63,16 +127,17 @@ def _db_settings():
         return lines
 
     st.header("Tables")
-    
+
     # Get root tables (tables with no parent)
     all_tables = db.get_schema().get_all_tables()
-    root_tables = [name for name, defn in all_tables.items()
-            if defn.get_parent() is None and not name.startswith('_dlt')]
-    
+    root_tables = [
+        name
+        for name, defn in all_tables.items()
+        if defn.get_parent() is None and not name.startswith("_dlt")
+    ]
+
     selected_root = st.selectbox(
-        "Select Root Table",
-        sorted(root_tables),
-        key="root_table_selector"
+        "Select Root Table", sorted(root_tables), key="root_table_selector"
     )
 
     # --- In your expander ---
@@ -93,13 +158,15 @@ def run_eyeon():
     with st.spinner("Running eyeon..."):
         try:
             # Run the command and capture the output
-            command=f"../../builds/eyeon-parse.sh STREAMLIT {st.session_state.data_dir}"
+            command = (
+                f"../../builds/eyeon-parse.sh STREAMLIT {st.session_state.data_dir}"
+            )
             result = subprocess.run(
                 command,
                 capture_output=True,
                 text=True,
-                check=True, # Raise an exception if the command fails
-                encoding='utf-8'
+                check=True,  # Raise an exception if the command fails
+                encoding="utf-8",
             )
             # Display the standard output in a code block
             st.subheader("Command Output")
@@ -114,12 +181,19 @@ def run_eyeon():
             # Handle other potential errors
             st.error(f"An unexpected error occurred: {e}")
 
+
 def run_dbt():
     # Initialize the runner
     dbt = dbtRunner()
 
     # Define CLI arguments as a list of strings
-    cli_args = ["run", "--project-dir", "dbt_eyeon_gold", "--profiles-dir", "dbt_eyeon_gold"]
+    cli_args = [
+        "run",
+        "--project-dir",
+        "dbt_eyeon_gold",
+        "--profiles-dir",
+        "dbt_eyeon_gold",
+    ]
 
     # Invoke the command
     res: dbtRunnerResult = dbt.invoke(cli_args)
@@ -133,13 +207,47 @@ def run_dbt():
 
 
 def load_data(batch_dir):
-#    args = ['--utility_id STREAMLIT', f'--source {batch_dir}']
-    load_eyeon.main(utility_id='STREAMLIT', source=batch_dir)
+    #    args = ['--utility_id STREAMLIT', f'--source {batch_dir}']
+    load_eyeon.main(utility_id="STREAMLIT", source=batch_dir)
+
 
 def sidebar_db_chooser():
     if db.exists():
         with st.sidebar:
             _db_settings()
 
+def list_dirs(directory_path: str) -> pd.DataFrame:
+    empty_df = pd.DataFrame(columns=["directory_name", "modified_time"])
+    rows = []
 
-                
+    try:
+        with os.scandir(directory_path) as entries:
+            for entry in entries:
+                if entry.is_dir():
+                    mtime_timestamp = entry.stat().st_mtime
+                    mtime_readable = datetime.fromtimestamp(mtime_timestamp).strftime("%Y-%m-%d %H:%M:%S")
+                    rows.append({
+                        "directory_path": directory_path,
+                        "directory_name": entry.name,
+                        "modified_time": mtime_readable,
+                    })
+
+        return pd.DataFrame(rows)
+
+    except FileNotFoundError:
+        print(f"Error: Directory not found at {directory_path}")
+        return empty_df
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return empty_df
+
+def list_all_batches(directory_path):
+    all_batches_sql = """
+    select b.*, d.*
+    from silver.batch_info b
+    full outer join dirs d on concat_ws('/',d.directory_path, d.directory_name)=regexp_replace(b.source, '/$', '')
+    """
+    dirs = list_dirs(directory_path)
+    batches = db.get_conn().sql(all_batches_sql).df()
+    return batches
