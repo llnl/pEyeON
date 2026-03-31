@@ -39,18 +39,15 @@ class LandingPage(BasePageLayout):
                         f"🔍 Filter on: {table.search_field}", 
                         placeholder="Use % or * for wildcard (case insensitive)"
                     )
-                    filter_metadata = st.selectbox("Metadata Type", ['elf','java','mach_o','native_lib','ole','pe','unknown'])
+                    filter_metadata = st.selectbox("Metadata Type", ['all','elf','java','mach_o','native_lib','ole','pe','unknown'])
                     # Find an example file. Present a list of metadata types (that exist in this dataset) and then randomly pick one.
                     if filter_text:
+                        sql = f"SELECT * FROM {table_name} WHERE {table.search_field} ILIKE ? ORDER BY {table.search_field}"
                         results = db.get_conn().execute(
-                            f"SELECT * FROM {table_name} WHERE {table.search_field} ILIKE ? ORDER BY {table.search_field}",
+                            sql,
                             [f"%{filter_text.replace('*', '%') }%"]
                         ).df()
-                    else:
-                        results = db.get_conn().execute(
-                            f"SELECT * FROM {table_name}"
-                        ).df()
-                    if filter_metadata:
+                    elif filter_metadata:
                         md_table = f'metadata_{filter_metadata}_file'
                         if filter_metadata=='unknown':
                             sql='''
@@ -71,9 +68,15 @@ class LandingPage(BasePageLayout):
                             '''                            
                             # filter OUT the unknowns...
                             results = db.get_conn().execute(sql).df()
+                        elif filter_metadata=='all':
+                            results = db.get_conn().execute(f"SELECT * FROM {table_name}").df()
                         else:
                             filter = 'm.uuid is not null'
                             results = db.get_conn().execute(f'select o.* from {table_name} o left outer join {md_table} m on m.uuid=o.uuid where {filter}').df()
+                    else:
+                        results = db.get_conn().execute(
+                            f"SELECT * FROM {table_name}"
+                        ).df()
 
                 else:
                     if any(col.extra.get("search") for col in table.columns.values()):
