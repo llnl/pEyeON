@@ -1,0 +1,13 @@
+[datasets]
+dataset_path = "/path/to/eyeon/json/dirs"
+
+[db]
+db_file = "eyeon.duckdb"
+db_path = "database"
+
+[defaults]
+utility_id = "testing"
+
+[app]
+logo = "EyeON_Mascot_small.png"
+page_title = "EyeOnData"

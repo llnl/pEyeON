@@ -1,3 +1,5 @@
+# Application config
+EyeOnData.toml
 # dlt-specific ignores
 # secrets and credentials
 secrets.toml
