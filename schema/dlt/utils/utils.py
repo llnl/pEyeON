@@ -1,4 +1,5 @@
 import streamlit as st
+from utils.config import duckdb_path, resolve_dlt_path, settings, update_eyeondata_toml
 import pages.pages as pages
 import utils.db as db
 from utils.schema_ext import EnrichedTable
@@ -9,7 +10,11 @@ import load_eyeon
 from dbt.cli.main import dbtRunner, dbtRunnerResult
 import pandas as pd
 from datetime import datetime
-from utils.config import duckdb_path, resolve_dlt_path, settings
+import re
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+
 
 
 def app_base_config():
@@ -25,39 +30,34 @@ def app_base_config():
 
 
 def init_app_form():
+    """
+    If no existing database is found, prompt for an initial batch of data to load allow user to specify DB location.
+    """
     with st.form(key="init_db_form"):
         st.markdown("Initialize Database")
-
-        defaults_box = settings.get("defaults", {}) or {}
-        db_box = settings.get("db", {}) or {}
-
-        default_utility_id = str(defaults_box.get("utility_id", ""))
-        default_json_dir = str(defaults_box.get("json_dir", ""))
-        default_db_dir = str(db_box.get("db_path", "schemas"))
-
-        utility_id = st.text_input("Utility ID", value=default_utility_id)
-        batch_dir = st.text_input(
-            "JSON Directory path",
-            placeholder="/path/to/data",
-            value=default_json_dir,
+        utility_id = st.text_input(
+            "Utility ID",
+            value=str(getattr(settings.defaults, "utility_id", "") or ""),
         )
+        batch_dir = st.text_input(
+            "Dataset Path",
+            value=str(getattr(settings.datasets, "dataset_path", "") or ""),
+            placeholder="/path/to/eyeon_json_data",
+        )
+
+        selected_rows = batch_selector()            
+
         database_path = st.text_input(
             "DB Directory path",
-            placeholder="/path/to/data",
-            value=default_db_dir,
+            value=str(getattr(settings.db, "db_path", "") or ""),
+            placeholder="/path/to/database",
         )
 
-        db_dir_preview = resolve_dlt_path(
-            (database_path or "").strip() or default_db_dir
+        create_db_dir = st.checkbox(
+            "Create DB directory if missing",
+            value=False,
+            help="If the directory does not exist, check this to allow the app to create it.",
         )
-        create_db_dir = False
-        if not db_dir_preview.exists():
-            st.warning(f"DB directory does not exist yet: {db_dir_preview}")
-            create_db_dir = st.checkbox(
-                "Create DB directory",
-                value=False,
-                help="Create this directory before initializing the database.",
-            )
 
         submitted = st.form_submit_button("Submit")
         if submitted:
@@ -73,64 +73,144 @@ def init_app_form():
             # JSON input directory: must exist and contain JSON files.
             batch_path = Path((batch_dir or "").strip()).expanduser()
             if not str(batch_path):
-                errors.append("JSON Directory path is required.")
+                errors.append("Dataset Path is required.")
             elif not batch_path.exists():
-                errors.append(f"JSON Directory path does not exist: {batch_path}")
+                errors.append(f"Dataset Path does not exist: {batch_path}")
             elif not batch_path.is_dir():
-                errors.append(f"JSON Directory path must be a directory: {batch_path}")
-            elif not any(batch_path.glob("*.json")):
-                errors.append(
-                    f"No '*.json' files found in: {batch_path} (EyeOn loader reads only this directory, not subfolders)"
-                )
+                errors.append(f"Dataset Path must be a directory: {batch_path}")
 
-            # DB directory: create if missing (with user confirmation), must end up writable.
-            db_dir_path = resolve_dlt_path((database_path or "").strip())
+            # Must select at least 1 dataset dir
+            if len(selected_rows)==0:
+                errors.append("Must select at least 1 Dataset to process")
+
+            # DB directory: create if requested; must end up writable.
+            db_dir_path = Path((database_path or "").strip()).expanduser()
             if not str(db_dir_path):
                 errors.append("DB Directory path is required.")
             elif db_dir_path.exists() and not db_dir_path.is_dir():
                 errors.append(f"DB Directory path must be a directory: {db_dir_path}")
-            elif not db_dir_path.exists():
-                if not create_db_dir:
-                    errors.append(
-                        "DB Directory path does not exist. Check 'Create DB directory' to create it."
-                    )
-                else:
-                    parent = db_dir_path.parent
-                    if not parent.exists():
+
+            if not errors:
+                if not db_dir_path.exists():
+                    if not create_db_dir:
                         errors.append(
-                            f"Cannot create DB Directory path because parent does not exist: {parent}"
+                            f"DB Directory path does not exist: {db_dir_path}. Check 'Create DB directory if missing' to create it."
                         )
-                    elif not os.access(str(parent), os.W_OK | os.X_OK):
+                    else:
+                        try:
+                            db_dir_path.mkdir(parents=True, exist_ok=True)
+                        except Exception as e:
+                            errors.append(
+                                f"Failed to create DB Directory path {db_dir_path}: {e}"
+                            )
+
+                if not errors:
+                    if not db_dir_path.exists() or not db_dir_path.is_dir():
                         errors.append(
-                            f"Cannot create DB Directory path because parent is not writable: {parent}"
+                            f"DB Directory path must be a directory: {db_dir_path}"
                         )
-            elif not os.access(str(db_dir_path), os.W_OK | os.X_OK):
-                errors.append(f"DB Directory path is not writable: {db_dir_path}")
+                    elif not os.access(str(db_dir_path), os.W_OK):
+                        errors.append(
+                            f"DB Directory path is not writable: {db_dir_path}"
+                        )
 
             if errors:
                 for msg in errors:
                     st.error(msg)
             else:
-                # Apply overrides for this run (TOML on disk is unchanged).
-                settings.set("db.db_path", str(db_dir_path))
-                settings.set("defaults.utility_id", utility_id_clean)
-                settings.set("defaults.json_dir", str(batch_path))
+                # Persist to TOML so future runs pick these up as defaults.
+                update_eyeondata_toml(
+                    {
+                        "db": {
+                            "db_path": (database_path or "").strip(),
+                        },
+                        "defaults": {
+                            "utility_id": utility_id_clean,
+                            "json_dir": str(batch_path),
+                        },
+                    }
+                )
 
-                if not db_dir_path.exists():
-                    try:
-                        db_dir_path.mkdir(parents=True, exist_ok=True)
-                    except Exception as e:
-                        st.error(f"Failed to create DB directory {db_dir_path}: {e}")
-                        return
+                # Ensure the rest of this run uses the selected DB location.
+                db_file = str(getattr(settings.db, "db_file", "eyeon.duckdb"))
+                os.environ["EYEON_DUCKDB_PATH"] = str(
+                    (resolve_dlt_path(db_dir_path) / db_file).resolve()
+                )
 
                 with st.spinner("Initializing..."):
                     db.init()
-                    load_data(str(batch_path), utility_id=utility_id_clean)
+                    load_me_some_data(selected_rows)
+#                    load_data(str(batch_path), utility_id=utility_id_clean)
                     run_dbt()
+
+def batch_selector():
+    with st.container(border=True):
+        # Get OS Dirs
+        batch_dirs = list_dirs(settings.datasets.dataset_path)
+
+        event = st.dataframe(
+            batch_dirs,
+            width="stretch",
+            hide_index=True,
+            on_select="rerun",
+            selection_mode="multi-row",
+            key="dataset_dirs",
+        )
+
+        selected_rows: list[dict] = []
+        if event.selection.rows:
+            selected_rows = (
+                batch_dirs.iloc[event.selection.rows]
+                .copy()
+                .replace({pd.NA: None})
+                .to_dict(orient="records")
+            )
+        return selected_rows
+    
+# 20260326T153450Z_MAC -> ts=2026-03-26T15:34:50Z, utility_id=MAC
+DIR_RE = re.compile(r"^(?P<ts>\d{8}T\d{6}Z)_(?P<utility_id>[^/]+)$")
+
+
+@dataclass(frozen=True)
+class BatchDir:
+    path: Path
+    utility_id: str
+    ts_utc: datetime  # timezone-aware
+
+
+def parse_batch_dir_name(name: str) -> tuple[datetime, str]:
+    m = DIR_RE.match(name)
+    if not m:
+        raise ValueError(f"Unrecognized batch dir name: {name!r}")
+    ts_utc = datetime.strptime(m.group("ts"), "%Y%m%dT%H%M%SZ").replace(
+        tzinfo=timezone.utc
+    )
+    utility_id = m.group("utility_id")
+    return ts_utc, utility_id
+
+
+def parse_batch_dir(path: str | Path) -> BatchDir:
+    p = Path(path)
+    ts_utc, utility_id = parse_batch_dir_name(p.name)
+    return BatchDir(path=p, utility_id=utility_id, ts_utc=ts_utc)
+
+
+def load_me_some_data(selected_rows: list[dict]) -> None:
+    """Hook for loading selected batch rows"""
+    with st.status("Processing data...", expanded=True) as status:
+        for row in selected_rows:
+            full_path = os.path.join(row["directory_path"], row["directory_name"])
+            st.write(f"Loading using DLT: {full_path}")
+            batch_info = parse_batch_dir(row["directory_name"])
+            load_data(full_path, batch_info.utility_id)
+        # DBT only needs to be run once for all batches
+        st.write("Running DBT...")
+        run_dbt()
+        st.rerun()
 
 
 def sidebar_config(pages):
-    st.sidebar.image("EyeOn_logo.png", width=120)
+    st.sidebar.image(settings.app.logo, width=120)
     st.sidebar.title(settings.app.page_title)
     st.sidebar.header("Menu")
     # Add pages that you want to expose on the sidebar here. They'll be listed in the order added.
@@ -250,12 +330,9 @@ def run_dbt():
         print("dbt execution failed.")
 
 
-def load_data(batch_dir, utility_id=None):
-    #    args = ['--utility_id STREAMLIT', f'--source {batch_dir}']
-    load_eyeon.main(
-        utility_id=utility_id or settings.defaults.utility_id,
-        source=batch_dir,
-    )
+def load_data(batch_dir: str, utility_id=None):
+    utility_id = utility_id or settings.defaults.utility_id
+    load_eyeon.main(utility_id=utility_id, source=batch_dir)
 
 
 def sidebar_db_chooser():

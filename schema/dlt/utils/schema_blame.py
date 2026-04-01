@@ -132,7 +132,7 @@ def extract_schema_changes(conn: duckdb.DuckDBPyConnection, since_version: int =
     """
     versions = conn.execute("""
         SELECT version, inserted_at, schema
-        FROM _dlt_version
+        FROM silver._dlt_version
         WHERE version >= ?
         ORDER BY version
     """, [since_version]).fetchall()

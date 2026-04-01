@@ -9,6 +9,7 @@ import utils.db as db
 import pandas as pd
 import streamlit as st
 import altair as alt
+from utils.config import settings
 from utils.schema_blame import (
     DLT_INTERNAL_COLUMNS,
     materialize_schema_blame,
@@ -23,7 +24,7 @@ class LandingPage(BasePageLayout):
     def page_content(self):
         st.set_page_config(
             page_title="Schema Blame — eyeon_metadata",
-            page_icon="EyeOn_logo.png",
+            page_icon=settings.app.logo,
             layout="wide",
         )
         sidebar_config(app_pages())
@@ -70,7 +71,7 @@ class LandingPage(BasePageLayout):
         df_all = blame_summary(conn)
 
         if df_all.empty:
-            st.warning("No schema blame data found. Click **Refresh** in the sidebar to populate.")
+            st.warning("No schema blame data found. Likely due to no schema changes from loaded data.")
             st.stop()
 
         # apply filters

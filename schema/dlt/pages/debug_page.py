@@ -13,9 +13,10 @@ class LandingPage(BasePageLayout):
         super().__init__()
 
     def page_content(self):
-        st.set_page_config(page_icon="EyeOn_logo.png", page_title="Debug", layout="wide")
+        st.set_page_config(page_icon=settings.app.logo, page_title="Debug", layout="wide")
         sidebar_config(app_pages())
         st.header("Streamlit Debugging Tools")
+
 
         with st.expander("Session State"):
             st.json(st.session_state)
