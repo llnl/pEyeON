@@ -1,4 +1,4 @@
-dlt[hub]>=1.22.0
+dlt[hub,workspace]>=1.22.0
 streamlit
 duckdb
 dynaconf
