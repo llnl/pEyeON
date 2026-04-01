@@ -1,5 +1,4 @@
 import streamlit as st
-from utils.config import settings
 import pages.pages as pages
 import utils.db as db
 from utils.schema_ext import EnrichedTable
@@ -10,6 +9,7 @@ import load_eyeon
 from dbt.cli.main import dbtRunner, dbtRunnerResult
 import pandas as pd
 from datetime import datetime
+from utils.config import duckdb_path, resolve_dlt_path, settings
 
 
 def app_base_config():
@@ -27,13 +27,37 @@ def app_base_config():
 def init_app_form():
     with st.form(key="init_db_form"):
         st.markdown("Initialize Database")
-        utility_id = st.text_input("Utility ID")
+
+        defaults_box = settings.get("defaults", {}) or {}
+        db_box = settings.get("db", {}) or {}
+
+        default_utility_id = str(defaults_box.get("utility_id", ""))
+        default_json_dir = str(defaults_box.get("json_dir", ""))
+        default_db_dir = str(db_box.get("db_path", "schemas"))
+
+        utility_id = st.text_input("Utility ID", value=default_utility_id)
         batch_dir = st.text_input(
-            "JSON Directory path", placeholder="/path/to/data"
+            "JSON Directory path",
+            placeholder="/path/to/data",
+            value=default_json_dir,
         )
         database_path = st.text_input(
-            "DB Directory path", placeholder="/path/to/data"
+            "DB Directory path",
+            placeholder="/path/to/data",
+            value=default_db_dir,
         )
+
+        db_dir_preview = resolve_dlt_path(
+            (database_path or "").strip() or default_db_dir
+        )
+        create_db_dir = False
+        if not db_dir_preview.exists():
+            st.warning(f"DB directory does not exist yet: {db_dir_preview}")
+            create_db_dir = st.checkbox(
+                "Create DB directory",
+                value=False,
+                help="Create this directory before initializing the database.",
+            )
 
         submitted = st.form_submit_button("Submit")
         if submitted:
@@ -44,9 +68,7 @@ def init_app_form():
             if not utility_id_clean:
                 errors.append("Utility ID is required.")
             elif any(ch.isspace() for ch in utility_id_clean):
-                errors.append(
-                    "Utility ID must not contain spaces or other whitespace."
-                )
+                errors.append("Utility ID must not contain spaces or other whitespace.")
 
             # JSON input directory: must exist and contain JSON files.
             batch_path = Path((batch_dir or "").strip()).expanduser()
@@ -55,34 +77,55 @@ def init_app_form():
             elif not batch_path.exists():
                 errors.append(f"JSON Directory path does not exist: {batch_path}")
             elif not batch_path.is_dir():
-                errors.append(
-                    f"JSON Directory path must be a directory: {batch_path}"
-                )
+                errors.append(f"JSON Directory path must be a directory: {batch_path}")
             elif not any(batch_path.glob("*.json")):
                 errors.append(
                     f"No '*.json' files found in: {batch_path} (EyeOn loader reads only this directory, not subfolders)"
                 )
 
-            # DB directory: must exist and be writable. (Not wired through yet, but validate now.)
-            db_dir_path = Path((database_path or "").strip()).expanduser()
+            # DB directory: create if missing (with user confirmation), must end up writable.
+            db_dir_path = resolve_dlt_path((database_path or "").strip())
             if not str(db_dir_path):
                 errors.append("DB Directory path is required.")
+            elif db_dir_path.exists() and not db_dir_path.is_dir():
+                errors.append(f"DB Directory path must be a directory: {db_dir_path}")
             elif not db_dir_path.exists():
-                errors.append(f"DB Directory path does not exist: {db_dir_path}")
-            elif not db_dir_path.is_dir():
-                errors.append(
-                    f"DB Directory path must be a directory: {db_dir_path}"
-                )
-            elif not os.access(str(db_dir_path), os.W_OK):
+                if not create_db_dir:
+                    errors.append(
+                        "DB Directory path does not exist. Check 'Create DB directory' to create it."
+                    )
+                else:
+                    parent = db_dir_path.parent
+                    if not parent.exists():
+                        errors.append(
+                            f"Cannot create DB Directory path because parent does not exist: {parent}"
+                        )
+                    elif not os.access(str(parent), os.W_OK | os.X_OK):
+                        errors.append(
+                            f"Cannot create DB Directory path because parent is not writable: {parent}"
+                        )
+            elif not os.access(str(db_dir_path), os.W_OK | os.X_OK):
                 errors.append(f"DB Directory path is not writable: {db_dir_path}")
 
             if errors:
                 for msg in errors:
                     st.error(msg)
             else:
+                # Apply overrides for this run (TOML on disk is unchanged).
+                settings.set("db.db_path", str(db_dir_path))
+                settings.set("defaults.utility_id", utility_id_clean)
+                settings.set("defaults.json_dir", str(batch_path))
+
+                if not db_dir_path.exists():
+                    try:
+                        db_dir_path.mkdir(parents=True, exist_ok=True)
+                    except Exception as e:
+                        st.error(f"Failed to create DB directory {db_dir_path}: {e}")
+                        return
+
                 with st.spinner("Initializing..."):
                     db.init()
-                    load_data(str(batch_path))
+                    load_data(str(batch_path), utility_id=utility_id_clean)
                     run_dbt()
 
 
@@ -158,9 +201,7 @@ def run_eyeon():
     with st.spinner("Running eyeon..."):
         try:
             # Run the command and capture the output
-            command = (
-                f"../../builds/eyeon-parse.sh STREAMLIT {st.session_state.data_dir}"
-            )
+            command = f"../../builds/eyeon-parse.sh {settings.defaults.utility_id} {st.session_state.data_dir}"
             result = subprocess.run(
                 command,
                 capture_output=True,
@@ -186,6 +227,9 @@ def run_dbt():
     # Initialize the runner
     dbt = dbtRunner()
 
+    # Ensure dbt points at the same DuckDB file as the app/DLT.
+    os.environ["EYEON_DUCKDB_PATH"] = str(duckdb_path())
+
     # Define CLI arguments as a list of strings
     cli_args = [
         "run",
@@ -206,15 +250,19 @@ def run_dbt():
         print("dbt execution failed.")
 
 
-def load_data(batch_dir):
+def load_data(batch_dir, utility_id=None):
     #    args = ['--utility_id STREAMLIT', f'--source {batch_dir}']
-    load_eyeon.main(utility_id="STREAMLIT", source=batch_dir)
+    load_eyeon.main(
+        utility_id=utility_id or settings.defaults.utility_id,
+        source=batch_dir,
+    )
 
 
 def sidebar_db_chooser():
     if db.exists():
         with st.sidebar:
             _db_settings()
+
 
 def list_dirs(directory_path: str) -> pd.DataFrame:
     empty_df = pd.DataFrame(columns=["directory_name", "modified_time"])
@@ -225,12 +273,16 @@ def list_dirs(directory_path: str) -> pd.DataFrame:
             for entry in entries:
                 if entry.is_dir():
                     mtime_timestamp = entry.stat().st_mtime
-                    mtime_readable = datetime.fromtimestamp(mtime_timestamp).strftime("%Y-%m-%d %H:%M:%S")
-                    rows.append({
-                        "directory_path": directory_path,
-                        "directory_name": entry.name,
-                        "modified_time": mtime_readable,
-                    })
+                    mtime_readable = datetime.fromtimestamp(mtime_timestamp).strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    )
+                    rows.append(
+                        {
+                            "directory_path": directory_path,
+                            "directory_name": entry.name,
+                            "modified_time": mtime_readable,
+                        }
+                    )
 
         return pd.DataFrame(rows)
 
@@ -241,6 +293,7 @@ def list_dirs(directory_path: str) -> pd.DataFrame:
     except Exception as e:
         print(f"An error occurred: {e}")
         return empty_df
+
 
 def list_all_batches(directory_path):
     all_batches_sql = """

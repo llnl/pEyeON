@@ -3,13 +3,16 @@ import duckdb
 import dlt
 import utils.schema_ext as schema_ext
 from pathlib import Path
+from utils.config import duckdb_path, resolve_dlt_path
+
 
 def db_path():
-    "TODO: pull from TOML file"
-    return "schemas/eyeon_metadata.duckdb"
+    return str(duckdb_path())
 
-def exists()-> bool:
+
+def exists() -> bool:
     return Path(db_path()).exists()
+
 
 @st.cache_resource
 def get_conn(schema="silver"):
@@ -19,13 +22,14 @@ def get_conn(schema="silver"):
     Silver is the default as it is generally used the most.
     """
     conn = duckdb.connect(db_path())
-#    conn.execute(f"use {schema}")
+    #    conn.execute(f"use {schema}")
     return conn
+
 
 def init():
     "Initialize a new database instance."
     # Get db conn...
-    sql_file = "schemas/schema.sql"
+    sql_file = resolve_dlt_path("schemas/schema.sql")
 
     con = duckdb.connect(db_path())
 
@@ -36,10 +40,13 @@ def init():
         con.execute(statement)
     con.close()
 
+
 # Load schema (cached)
 @st.cache_resource
 def get_schema():
     # Attaching to the pipeline gives us access to the file-based metadata DLT manages, such as the most current schema.
     pipeline = dlt.attach(pipeline_name="eyeon_metadata")
-    schema = schema_ext.build_schema(pipeline,"schemas/eyeon_schema_overlay.yaml")
+    schema = schema_ext.build_schema(
+        pipeline, str(resolve_dlt_path("schemas/eyeon_schema_overlay.yaml"))
+    )
     return schema

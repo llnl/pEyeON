@@ -1,5 +1,17 @@
 [datasets]
 dataset_path = "/Users/johnson30/git/LLNL/pEyeOn/schema/dlt/schemas"
 
+[db]
+# Directory containing the DuckDB database file.
+# Relative paths are resolved relative to `schema/dlt/`.
+db_path = "woot"
+
+# DuckDB database file name.
+db_file = "eyeon-works.duckdb"
+
+[defaults]
+utility_id = "testing"
+json_dir = ""
+
 [app]
 page_title = "EyeOnData"
