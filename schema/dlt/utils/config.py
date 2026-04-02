@@ -2,17 +2,21 @@ from pathlib import Path
 import os
 import tomllib
 from typing import Any, Mapping, Union
-from dynaconf import Dynaconf
+from dynaconf import Dynaconf, Validator
 
 
 _DLT_DIR = Path(__file__).resolve().parents[1]
 _SETTINGS_FILE = _DLT_DIR / "EyeOnData.toml"
 
+if not _SETTINGS_FILE.is_file():
+    raise FileNotFoundError(
+        f"{_SETTINGS_FILE} must exist. Create one based on the template file."
+    )
+
 settings = Dynaconf(
     envvar_prefix="EyeOnData_",
     settings_files=[str(_SETTINGS_FILE)],
 )
-
 
 def resolve_dlt_path(path: Union[str, Path]) -> Path:
     """Resolve a path relative to `schema/dlt/` unless already absolute."""

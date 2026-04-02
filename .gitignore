@@ -3,7 +3,6 @@ __pycache__
 .pyc
 .swp
 *.egg-info
-certs
 dist
 .DS_Store
 # *.exe

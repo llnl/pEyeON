@@ -6,6 +6,8 @@ sources:
     tables:
       - name: raw_obs
       - name: raw_obs__filetype
+      - name: raw_obs__signatures
+      - name: raw_obs__signatures__certs
       - name: batch_info
       - name: metadata_elf_file
       - name: metadata_java_file

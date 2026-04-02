@@ -3,6 +3,6 @@ eyeon_gold:
   outputs:
     dev:
       type: duckdb
-      path: "{{ env_var('EYEON_DUCKDB_PATH', 'schemas/eyeon.duckdb') }}"
+      path: "{{ env_var('EYEON_DUCKDB_PATH', 'database/eyeon.duckdb') }}"
       threads: 4
       schema: gold

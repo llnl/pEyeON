@@ -1,0 +1,77 @@
+version: 2
+
+models:
+  - name: stg_eyeon__observations
+    description: One row per observation sourced from the current DLT silver tables.
+    columns:
+      - name: observation_uuid
+        tests:
+          - not_null
+
+  - name: stg_eyeon__sigs_n_certs
+    description: One row per observation-certificate occurrence sourced from the current DLT silver tables.
+    columns:
+      - name: observation_uuid
+        tests:
+          - not_null
+      - name: cert_sha256
+        tests:
+          - not_null
+
+  - name: int_eyeon__observation_certificates
+    description: Reusable bridge between observations and certificate occurrences.
+
+  - name: int_eyeon__unique_certificates
+    description: Deterministically deduplicated certificate rows keyed by certificate SHA256.
+    columns:
+      - name: cert_sha256
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_certificates
+    description: Consumer-facing certificate dimension with parsed issuer and subject attributes.
+    columns:
+      - name: cert_sha256
+        tests:
+          - not_null
+          - unique
+
+  - name: fct_observation_certificates
+    description: Fact table linking observations to certificates.
+    columns:
+      - name: observation_uuid
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_eyeon__observations')
+                field: observation_uuid
+      - name: cert_sha256
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_certificates')
+                field: cert_sha256
+
+  - name: mart_cert_feature_summary
+    description: Certificate counts by CA flag and usage fields.
+
+  - name: mart_cert_locations
+    description: Observation-certificate counts by utility identifier.
+
+  - name: mart_cert_key_sizes
+    description: Unique certificate counts by RSA key size.
+
+  - name: mart_cert_issue_years
+    description: Unique certificate counts bucketed by issue year.
+
+  - name: mart_cert_expiration_years
+    description: Unique certificate counts bucketed by expiration year.
+
+  - name: mart_cert_subject_states
+    description: Unique certificate counts by parsed subject state.
+
+  - name: mart_cert_organizations
+    description: Unique certificate counts by parsed subject organization.

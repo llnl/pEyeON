@@ -1,7 +1,7 @@
 # dbt: Gold Models (DuckDB)
 
-This dbt project builds the Gold layer from the existing `silver` schema in
-`schemas/eyeon_metadata.duckdb`.
+This dbt project builds the Gold layer from the existing `silver` schema in the
+DuckDB file configured in `../EyeOnData.toml` (defaults to `schemas/eyeon.duckdb`).
 
 ## Install
 
@@ -21,4 +21,4 @@ dbt build \
   --profiles-dir schema/dlt/dbt_eyeon_gold
 ```
 
-Gold tables are created in the `gold` schema inside `schemas/eyeon_metadata.duckdb`.
+Gold tables are created in the `gold` schema inside that DuckDB file.

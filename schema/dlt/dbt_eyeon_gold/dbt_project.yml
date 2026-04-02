@@ -15,9 +15,20 @@ clean-targets: ["target", "dbt_packages", "logs"]
 
 models:
   eyeon_gold:
+    +materialized: view
     staging:
       +materialized: view
       +schema: gold_staging
     gold:
       +materialized: table
       +schema: gold
+    certs:
+      staging:
+        +schema: staging
+      intermediate:
+        +schema: intermediate
+      marts:
+        +schema: gold
+
+vars:
+  eyeon_dataset_root: "{{ env_var('EYEON_DATASET_ROOT', '~/data/eyeon') }}"
