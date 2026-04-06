@@ -1,7 +1,6 @@
-# import tempfile
 import os
 import unittest
-import logging
+
 from glob import glob
 import datetime as dt
 
@@ -10,12 +9,13 @@ import json
 from eyeon import observe
 
 import jsonschema
+from importlib.metadata import version
 
 
 class ObservationTestCase(unittest.TestCase):
     @classmethod
     def setUp(self) -> None:
-        self.OBS = observe.Observe("./binaries/a_out_files/big_m68020.aout")
+        self.OBS = observe.Observe("tests/binaries/a_out_files/big_m68020.aout")
 
     def testVars(self) -> None:
         self.assertEqual(self.OBS.bytecount, 4)
@@ -31,12 +31,8 @@ class ObservationTestCase(unittest.TestCase):
             self.fail()
         self.assertIsInstance(self.OBS.observation_ts, str)
         self.assertEqual(self.OBS.permissions, "0o100644")
-        self.assertEqual(self.OBS.filetype, "other")
-
-    def testConfigJson(self) -> None:
-        vs = vars(self.OBS)
-        obs_json = json.loads(self.OBS._safe_serialize(vs))
-        assert "defaults" in obs_json, "defaults not in json"
+        self.assertCountEqual(self.OBS.filetype, ["A.OUT big"])
+        self.assertEqual(self.OBS.eyeon_version, version("peyeon"))
 
     @classmethod
     def tearDownClass(self) -> None:
@@ -50,7 +46,7 @@ class ObservationTestCase(unittest.TestCase):
 class ObservationTestCase2(unittest.TestCase):
     @classmethod
     def setUp(self) -> None:
-        self.OBS = observe.Observe("./binaries/coff_files/intel_80386_coff")
+        self.OBS = observe.Observe("tests/binaries/coff_files/intel_80386_coff")
 
     def testVars(self) -> None:
         self.assertEqual(self.OBS.bytecount, 2)
@@ -69,20 +65,20 @@ class ObservationTestCase2(unittest.TestCase):
         self.assertEqual(
             len(self.OBS.signatures), 0
         )  # this file is unsigned, should have no signatures
-        self.assertEqual(self.OBS.filetype, "other")
-
+        self.assertCountEqual(self.OBS.filetype, ["COFF"])
+        self.assertEqual(self.OBS.eyeon_version, version("peyeon"))
 
     def testValidateJson(self) -> None:
-        with open("../schema/observation.schema.json") as schem:
+        with open("schema/observation.schema.json") as schem:
             schema = json.loads(schem.read())
         obs_json = json.loads(json.dumps(vars(self.OBS)))
         print(jsonschema.validate(instance=obs_json, schema=schema))
 
     def testValidateSchema(self) -> None:
-        with open("../schema/observation.schema.json") as schem:
+        with open("schema/observation.schema.json") as schem:
             schema = json.loads(schem.read())
 
-        with open("../schema/meta.schema.json") as schem:
+        with open("schema/meta.schema.json") as schem:
             meta = json.loads(schem.read())
 
         print(jsonschema.validate(instance=schema, schema=meta))
@@ -99,7 +95,7 @@ class ObservationTestCase2(unittest.TestCase):
 class ObservationTestCase3(unittest.TestCase):
     @classmethod
     def setUp(self) -> None:
-        self.OBS = observe.Observe("./binaries/ELF_shared_obj_test_no1/bin/hello_world")
+        self.OBS = observe.Observe("tests/binaries/ELF_shared_obj_test_no1/bin/hello_world")
 
     def testVars(self) -> None:
         self.assertEqual(self.OBS.bytecount, 16424)
@@ -115,21 +111,8 @@ class ObservationTestCase3(unittest.TestCase):
             self.fail()
         self.assertIsInstance(self.OBS.observation_ts, str)
         self.assertEqual(self.OBS.permissions, "0o100755")
-        self.assertEqual(self.OBS.filetype, "elf")
-
-
-    # def test_detect_it_easy(self) -> None:
-    #     expected_output = (
-    #         "ELF64\n"
-    #         "    Compiler: gcc((Ubuntu 11.3.0-1ubuntu1~22.04) 11.3.0)[DYN AMD64-64]\n"
-    #         "    Library: GLIBC(2.34)[DYN AMD64-64]\n\n"
-    #     )
-    #     self.assertEqual(self.OBS.detect_it_easy, expected_output)
-
-    def testConfigJson(self) -> None:
-        vs = vars(self.OBS)
-        obs_json = json.loads(self.OBS._safe_serialize(vs))
-        assert "defaults" in obs_json, "defaults not in json"
+        self.assertCountEqual(self.OBS.filetype, ["ELF"])
+        self.assertEqual(self.OBS.eyeon_version, version("peyeon"))
 
     @classmethod
     def tearDownClass(self) -> None:
@@ -145,7 +128,7 @@ class ObservationTestCase3(unittest.TestCase):
 class ObservationTestCase4(unittest.TestCase):
     @classmethod
     def setUp(self) -> None:
-        self.OBS = observe.Observe("./binaries/java_class_no1/HelloWorld.class")
+        self.OBS = observe.Observe("tests/binaries/java_class_no1/HelloWorld.class")
 
     def testVars(self) -> None:
         self.assertEqual(self.OBS.bytecount, 1091)
@@ -161,8 +144,8 @@ class ObservationTestCase4(unittest.TestCase):
             self.fail()
         self.assertIsInstance(self.OBS.observation_ts, str)
         self.assertEqual(self.OBS.permissions, "0o100644")
-        self.assertEqual(self.OBS.filetype, "other")
-
+        self.assertCountEqual(self.OBS.filetype, ["JAVACLASS"])
+        self.assertEqual(self.OBS.eyeon_version, version("peyeon"))
 
     # def test_detect_it_easy(self) -> None:
     #     expected_output = (
@@ -176,35 +159,7 @@ class ObservationTestCase5(unittest.TestCase):
     @classmethod
     def setUpClass(self) -> None:
         self.OBS = observe.Observe(
-            "./binaries/NET_app_config_test_no1/ConsoleApp2.exe",
-            log_level=logging.INFO,
-            log_file="./observe.log",
-        )
-
-    def testLog(self):  # check log is created and correct info logged
-        self.assertTrue(os.path.exists("./observe.log"))
-        with open("./observe.log", "r") as f:
-            log = f.read()
-
-        messages = []
-        for line in log.split("\n", maxsplit=3):
-            # check log formatting is correct for each line
-            if line:
-                components = line.split(" - ")  # separator defined in observe
-                print(components)
-
-                # order should be a datetime, then name, then loglevel
-                try:
-                    dt.datetime.strptime(components[0], "%Y-%m-%d %H:%M:%S,%f")
-                except ValueError:
-                    self.fail()
-                self.assertEqual(components[1], "eyeon.observe")
-                self.assertIn(components[2], ["INFO", "WARNING"])
-                messages.append(components[3])
-
-        # check message correctly logged
-        self.assertIn(
-            "file ./binaries/NET_app_config_test_no1/ConsoleApp2.exe has no signatures.", messages
+            "tests/binaries/NET_app_config_test_no1/ConsoleApp2.exe"
         )
 
     def testToString(self):
@@ -213,15 +168,11 @@ class ObservationTestCase5(unittest.TestCase):
         except Exception as e:
             self.fail(f"Observe.__str__ raised exception {e} unexpectedly!")
 
-    @classmethod
-    def tearDownClass(self):
-        os.remove("./observe.log")
-
 
 class ObservationTestCase6(unittest.TestCase):
     @classmethod
     def setUp(self) -> None:
-        self.OBS = observe.Observe("./binaries/macho_arm_files/hello_world")
+        self.OBS = observe.Observe("tests/binaries/macho_arm_files/hello_world")
 
     def testVars(self) -> None:
         self.assertEqual(self.OBS.bytecount, 39224)
@@ -238,8 +189,8 @@ class ObservationTestCase6(unittest.TestCase):
         self.assertIsInstance(self.OBS.observation_ts, str)
         self.assertEqual(self.OBS.permissions, "0o100755")
         self.assertEqual(len(self.OBS.signatures), 0)  # unsigned, should have no signatures
-        self.assertEqual(self.OBS.filetype, "macho")
-
+        self.assertCountEqual(self.OBS.filetype, ["MACHO64"])
+        self.assertEqual(self.OBS.eyeon_version, version("peyeon"))
 
     # def test_detect_it_easy(self) -> None:
     #     expected_output = (
@@ -248,16 +199,16 @@ class ObservationTestCase6(unittest.TestCase):
     #     self.assertEqual(self.OBS.detect_it_easy, expected_output)
 
     def testValidateJson(self) -> None:
-        with open("../schema/observation.schema.json") as schem:
+        with open("schema/observation.schema.json") as schem:
             schema = json.loads(schem.read())
         obs_json = json.loads(json.dumps(vars(self.OBS)))
         print(jsonschema.validate(instance=obs_json, schema=schema))
 
     def testValidateSchema(self) -> None:
-        with open("../schema/observation.schema.json") as schem:
+        with open("schema/observation.schema.json") as schem:
             schema = json.loads(schem.read())
 
-        with open("../schema/meta.schema.json") as schem:
+        with open("schema/meta.schema.json") as schem:
             meta = json.loads(schem.read())
 
         print(jsonschema.validate(instance=schema, schema=meta))
@@ -274,7 +225,7 @@ class ObservationTestCase6(unittest.TestCase):
 class ObservationTestCase7(unittest.TestCase):
     @classmethod
     def setUp(self) -> None:
-        self.OBS = observe.Observe("./binaries/Windows_dll_test_no1/hello_world.exe")
+        self.OBS = observe.Observe("tests/binaries/Windows_dll_test_no1/hello_world.exe")
 
     def testVars(self) -> None:
         self.assertEqual(self.OBS.bytecount, 58880)
@@ -290,13 +241,13 @@ class ObservationTestCase7(unittest.TestCase):
             self.fail()
         self.assertIsInstance(self.OBS.observation_ts, str)
         self.assertEqual(self.OBS.permissions, "0o100644")
-        self.assertEqual(self.OBS.filetype, "pe")
+        self.assertCountEqual(self.OBS.filetype, ["PE"])
 
 
 class ObservationTestCase8(unittest.TestCase):
     @classmethod
     def setUp(self) -> None:
-        self.OBS = observe.Observe("./binaries/powerpc/hello_world_ppc")
+        self.OBS = observe.Observe("tests/binaries/powerpc/hello_world_ppc")
 
     def testVars(self) -> None:
         self.assertEqual(self.OBS.bytecount, 71056)
@@ -312,8 +263,8 @@ class ObservationTestCase8(unittest.TestCase):
             self.fail()
         self.assertIsInstance(self.OBS.observation_ts, str)
         self.assertEqual(self.OBS.permissions, "0o100755")
-        self.assertEqual(self.OBS.filetype, "elf")
-
+        self.assertCountEqual(self.OBS.filetype, ["ELF"])
+        self.assertEqual(self.OBS.eyeon_version, version("peyeon"))
 
     # def test_detect_it_easy(self) -> None:
     #     expected_output = (
@@ -327,7 +278,7 @@ class ObservationTestCase8(unittest.TestCase):
 class ObservationTestCase9(unittest.TestCase):
     @classmethod
     def setUp(self) -> None:
-        self.OBS = observe.Observe("./binaries/msitest_no1/test.msi")
+        self.OBS = observe.Observe("tests/binaries/msitest_no1/test.msi")
 
     def testVars(self) -> None:
         self.assertEqual(self.OBS.bytecount, 12288)
@@ -343,13 +294,14 @@ class ObservationTestCase9(unittest.TestCase):
             self.fail()
         self.assertIsInstance(self.OBS.observation_ts, str)
         self.assertEqual(self.OBS.permissions, "0o100644")
-        self.assertEqual(self.OBS.filetype, "other")
+        self.assertCountEqual(self.OBS.filetype, ["OLE"])
+        self.assertEqual(self.OBS.eyeon_version, version("peyeon"))
 
 
 class ObservationTestCase10(unittest.TestCase):
     @classmethod
     def setUp(self) -> None:
-        self.OBS = observe.Observe("./binaries/Wintap.exe")
+        self.OBS = observe.Observe("tests/binaries/Wintap.exe")
 
     def testVars(self) -> None:
         self.assertEqual(self.OBS.bytecount, 201080)
@@ -376,7 +328,8 @@ class ObservationTestCase10(unittest.TestCase):
             self.OBS.signatures[0]["certs"][1]["issuer_sha256"],
             "552f7bdcf1a7af9e6ce672017f4f12abf77240c78e761ac203d1d9d20ac89988",
         )
-        self.assertEqual(self.OBS.filetype, "pe")
+        self.assertCountEqual(self.OBS.filetype, ["PE"])
+        self.assertEqual(self.OBS.eyeon_version, version("peyeon"))
 
 
 class TestFilePermissions(unittest.TestCase):
@@ -390,7 +343,7 @@ class TestFolderPermissions(unittest.TestCase):
         self.assertRaises(PermissionError, observe.Observe, "/root")
 
 
-with open("../schema/observation.schema.json") as schem:
+with open("schema/observation.schema.json") as schem:
     schema = json.loads(schem.read())
 
 
@@ -400,12 +353,13 @@ class TestJSONSchema(unittest.TestCase):
             "filename": "little_386.aout",
             "bytecount": 4,
             "magic": "Linux/i386 demand-paged executable (ZMAGIC)",  # noqa: E501
+            "eyeon_version": "null",
             "md5": "90a2eac40885beab82e592192a2cadd1",
             "observation_ts": "2024-12-04 22:27:45",
             "sha1": "f265f86a2f7bde59b88a47e53c0893d66a55a6cc",
             "sha256": "0dabc62368f8c774acf547ee84e794d172a72c0e8bb3c78d261a6e896ea60c42",
             "uuid": "f1eba7e3-e4c0-43e8-91dc-009a85367517",
-            "filetype": "other"
+            "filetype": ["A.OUT little"],
         }
         assert jsonschema.validate(instance=valid_data, schema=schema) is None
 
@@ -415,12 +369,13 @@ class TestJSONSchema(unittest.TestCase):
             "bytecount": 4,
             "magic": "Linux/i386 demand-paged executable (ZMAGIC)",  # noqa: E501
             "md5": "90a2eac40885beab82e592192a2cadd1",
+            "eyeon_version": "null",
             "observation_ts": "2024-12-04 22:27:45",
             "sha1": "f265f86a2f7bde59b88a47e53c0893d66a55a6cc",
             "sha256": "0dabc62368f8c774acf547ee84e794d172a72c0e8bb3c78d261a6e896ea60c42",
             "uuid": "f1eba7e3-e4c0-43e8-91dc-009a85367517",
             "invalid": "Invalid required property",
-            "filetype": "other"
+            "filetype": ["A.OUT little"],
         }
         with self.assertRaises(jsonschema.exceptions.ValidationError):
             assert jsonschema.validate(instance=invalid_data, schema=schema) is None
@@ -431,11 +386,12 @@ class TestJSONSchema(unittest.TestCase):
             "bytecount": "four",
             "magic": "Linux/i386 demand-paged executable (ZMAGIC)",  # noqa: E501
             "md5": "90a2eac40885beab82e592192a2cadd1",
+            "eyeon_version": "null",
             "observation_ts": "2024-12-04 22:27:45",
             "sha1": "f265f86a2f7bde59b88a47e53c0893d66a55a6cc",
             "sha256": "0dabc62368f8c774acf547ee84e794d172a72c0e8bb3c78d261a6e896ea60c42",
             "uuid": "f1eba7e3-e4c0-43e8-91dc-009a85367517",
-            "filetype": "other"
+            "filetype": ["A.OUT little"],
         }
         with self.assertRaises(jsonschema.exceptions.ValidationError):
             assert jsonschema.validate(instance=invalid_type_data, schema=schema) is None
@@ -446,10 +402,11 @@ class TestJSONSchema(unittest.TestCase):
             "bytecount": 4,
             "magic": "Linux/i386 demand-paged executable (ZMAGIC)",  # noqa: E501
             "md5": "90a2eac40885beab82e592192a2cadd1",
+            "eyeon_version": "null",
             "observation_ts": "2024-12-04 22:27:45",
             "sha256": "0dabc62368f8c774acf547ee84e794d172a72c0e8bb3c78d261a6e896ea60c42",
             "uuid": "f1eba7e3-e4c0-43e8-91dc-009a85367517",
-            "filetype": "other"
+            "filetype": ["A.OUT little"],
         }
         with self.assertRaises(jsonschema.exceptions.ValidationError):
             assert jsonschema.validate(instance=missing_data, schema=schema) is None
@@ -460,12 +417,13 @@ class TestJSONSchema(unittest.TestCase):
             "bytecount": 4,
             "magic": "Linux/i386 demand-paged executable (ZMAGIC)",  # noqa: E501
             "md5": "90a2eac40885beab82e592192a2cadd1",
+            "eyeon_version": "null",
             "observation_ts": "2024-12-04 22:27:45",
             "sha1": "f265f86a2f7bde59b88a47e53c0893d66a55a6cc",
             "sha256": "0dabc62368f8c774acf547ee84e794d172a72c0e8bb3c78d261a6e896ea60c42",
             "uuid": "f1eba7e3-e4c0-43e8-91dc-009a85367517",
             "extra_property": "Extra property",
-            "filetype": "other"
+            "filetype": ["A.OUT little"],
         }
         with self.assertRaises(jsonschema.exceptions.ValidationError):
             assert jsonschema.validate(instance=additional_data, schema=schema) is None

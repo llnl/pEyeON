@@ -1,15 +1,14 @@
 import os
 import sys
 
-import requests
+# import requests
 
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    import tomli as tomllib
+# if sys.version_info >= (3, 11):
+#     import tomllib
+# else:
+#     import tomli as tomllib
 
 sys.path.insert(0, os.path.abspath("../../src/eyeon/"))
-
 
 
 # Configuration file for the Sphinx documentation builder.
@@ -71,10 +70,10 @@ html_static_path = ["_static"]
 # def download_images_from_toml(toml_file, image_dir):
 #     with open(toml_file, "rb") as f:
 #         data = tomllib.load(f)
-# 
+#
 #     if not os.path.exists(image_dir):
 #         os.makedirs(image_dir)
-# 
+#
 #     for file_name, url in data.get("images", {}).items():
 #         if file_name and url:
 #             response = requests.get(url)
@@ -83,7 +82,7 @@ html_static_path = ["_static"]
 #                     img_file.write(response.content)
 #             else:
 #                 print(f"Failed to download {url}")
-# 
+#
 
 # Path to the TOML file
 # toml_file_path = os.path.join(os.path.dirname(__file__), "images.toml")

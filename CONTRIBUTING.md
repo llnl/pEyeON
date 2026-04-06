@@ -55,4 +55,3 @@ pre-commit installed at .git/hooks/pre-commit
 ## Code of Conduct
 
 All participants in the EyeON community are expected to follow our [Code of Conduct](https://www.contributor-covenant.org/version/2/1/code_of_conduct.html).
-

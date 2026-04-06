@@ -21,43 +21,68 @@ class testChecksum(unittest.TestCase):
         # Clean up the temporary file after test
         os.remove(self.temp_file.name)
 
+    def test_return_dict(self):
+        result = checksum.Checksum(
+            self.temp_file.name, algorithm="md5", expected_checksum=self.expected_sha256
+        )
+        for _, value in result.items():
+            self.assertIsNotNone(value)
+
     # Check passes
     def test_hash_file_sha256(self):
         result = checksum.Checksum(
             self.temp_file.name, algorithm="sha256", expected_checksum=self.expected_sha256
         )
-        self.assertEqual(result, self.expected_sha256)
+        self.assertEqual(result["algorithm"], "sha256")
+        self.assertEqual(result["expected"], self.expected_sha256)
+        self.assertEqual(result["actual"], self.expected_sha256)
+        self.assertTrue(result["verified"])
 
     def test_hash_file_md5(self):
         result = checksum.Checksum(
             self.temp_file.name, algorithm="md5", expected_checksum=self.expected_md5
         )
-        self.assertEqual(result, self.expected_md5)
+        self.assertEqual(result["algorithm"], "md5")
+        self.assertEqual(result["expected"], self.expected_md5)
+        self.assertEqual(result["actual"], self.expected_md5)
+        self.assertTrue(result["verified"])
 
     def test_hash_file_sha1(self):
         result = checksum.Checksum(
             self.temp_file.name, algorithm="sha1", expected_checksum=self.expected_sha1
         )
-        self.assertEqual(result, self.expected_sha1)
+        self.assertEqual(result["algorithm"], "sha1")
+        self.assertEqual(result["expected"], self.expected_sha1)
+        self.assertEqual(result["actual"], self.expected_sha1)
+        self.assertTrue(result["verified"])
 
     # Check fails
     def test_hash_file_sha256_fail(self):
         result = checksum.Checksum(
             self.temp_file.name, algorithm="sha256", expected_checksum="fj93u2j9ji"
         )
-        self.assertNotEqual(result, "fj93u2j9ji")
+        self.assertEqual(result["algorithm"], "sha256")
+        self.assertEqual(result["expected"], "fj93u2j9ji")
+        self.assertEqual(result["actual"], self.expected_sha256)
+        self.assertFalse(result["verified"])
 
     def test_hash_file_md5_fail(self):
         result = checksum.Checksum(
             self.temp_file.name, algorithm="md5", expected_checksum="324eqwr2"
         )
-        self.assertNotEqual(result, "324eqwr2")
+        self.assertEqual(result["algorithm"], "md5")
+        self.assertEqual(result["expected"], "324eqwr2")
+        self.assertEqual(result["actual"], self.expected_md5)
+        self.assertFalse(result["verified"])
 
     def test_hash_file_sha1_fail(self):
         result = checksum.Checksum(
             self.temp_file.name, algorithm="sha1", expected_checksum="32qreq42"
         )
-        self.assertNotEqual(result, "32qreq42")
+        self.assertEqual(result["algorithm"], "sha1")
+        self.assertEqual(result["expected"], "32qreq42")
+        self.assertEqual(result["actual"], self.expected_sha1)
+        self.assertFalse(result["verified"])
 
 
 if __name__ == "__main__":

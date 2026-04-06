@@ -12,12 +12,32 @@ import collections
 
 
 class GeneralDatabaseTestCase(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.original_output = "Wintap.exe.2950c0020a37b132718f5a832bc5cabd.json"
+        cls.database_output = "test_database"
+        cls.OBS = observe.Observe("tests/binaries/Wintap/Wintap.exe")
+        cls.PRS = parse.Parse("tests/binaries/Wintap/")
+
     def writeObserve(self):
         self.OBS.write_json()
-        self.OBS.write_database(self.database_output)
+        # os.remove(self.database_output)
+        try:
+            self.OBS.write_database(self.database_output)
+            wrote = True
+        except duckdb.BinderException:
+            wrote = False
+        self.assertTrue(wrote, "Cannot write to db")
 
     def writeParse(self):
+        # os.remove(self.database_output)
         self.PRS.write_database(self.database_output, self.original_output)
+        # try:
+        #     self.PRS.write_database(self.database_output, self.original_output)
+        #     wrote = True
+        # except duckdb.BinderException:
+        #     wrote = False
+        # self.assertTrue(wrote, "Cannot write to db")
 
     def checkDatabaseCreated(self) -> None:
         self.assertTrue(os.path.isfile(self.database_output))
@@ -63,9 +83,6 @@ class GeneralDatabaseTestCase(unittest.TestCase):
             if "metadata" in json_dict:
                 self.dict_compare(json_dict.pop("metadata"), json.loads((db_dict.pop("metadata"))))
 
-            if "defaults" in json_dict:
-                self.dict_compare(json_dict.pop("defaults"), json.loads((db_dict.pop("defaults"))))
-
             for key in json_dict:
                 if isinstance(json_dict[key], str):
                     # normalize inconsistencies with uuid/hashes from db import
@@ -91,20 +108,20 @@ class GeneralDatabaseTestCase(unittest.TestCase):
                     #  for example: see how datetime entries look in the database
 
     @classmethod
-    def tearDownClass(self):  # remove outputs
-        os.remove(self.database_output)
-        if os.path.isdir(self.original_output):
-            shutil.rmtree(self.original_output)
+    def tearDownClass(cls):  # remove outputs
+        os.remove(cls.database_output)
+        if os.path.isdir(cls.original_output):
+            shutil.rmtree(cls.original_output)
         else:
-            os.remove(self.original_output)
+            os.remove(cls.original_output)
 
 
 class ExeObserveTestCase(GeneralDatabaseTestCase):
     @classmethod
-    def setUpClass(self):
-        self.original_output = "Wintap.exe.2950c0020a37b132718f5a832bc5cabd.json"
-        self.database_output = "test_database"
-        self.OBS = observe.Observe("./binaries/Wintap/Wintap.exe")
+    def setUpClass(cls):
+        cls.original_output = "Wintap.exe.2950c0020a37b132718f5a832bc5cabd.json"
+        cls.database_output = "test_database"
+        cls.OBS = observe.Observe("tests/binaries/Wintap/Wintap.exe")
 
     def testCommon(self):
         self.writeObserve()
@@ -114,10 +131,10 @@ class ExeObserveTestCase(GeneralDatabaseTestCase):
 
 class ElfObserveTestCase(GeneralDatabaseTestCase):
     @classmethod
-    def setUpClass(self):
-        self.original_output = "hello_world.d2a52fd35b9bec826c814f26cba50b4d.json"
-        self.database_output = "test_database"
-        self.OBS = observe.Observe("./binaries/ELF_shared_obj_test_no1/bin/hello_world")
+    def setUpClass(cls):
+        cls.original_output = "hello_world.d2a52fd35b9bec826c814f26cba50b4d.json"
+        cls.database_output = "test_database"
+        cls.OBS = observe.Observe("tests/binaries/ELF_shared_obj_test_no1/bin/hello_world")
 
     def testCommon(self):
         self.writeObserve()
@@ -127,10 +144,10 @@ class ElfObserveTestCase(GeneralDatabaseTestCase):
 
 class PowerPCObserveTestCase(GeneralDatabaseTestCase):
     @classmethod
-    def setUpClass(self):
-        self.original_output = "hello_world_ppc.0c51f3e375a077b1ab85106cd8339f1d.json"
-        self.database_output = "test_database"
-        self.OBS = observe.Observe("./binaries/powerpc/hello_world_ppc")
+    def setUpClass(cls):
+        cls.original_output = "hello_world_ppc.0c51f3e375a077b1ab85106cd8339f1d.json"
+        cls.database_output = "test_database"
+        cls.OBS = observe.Observe("tests/binaries/powerpc/hello_world_ppc")
 
     def testCommon(self):
         self.writeObserve()
@@ -140,11 +157,11 @@ class PowerPCObserveTestCase(GeneralDatabaseTestCase):
 
 class X86ParseDatabaseTestCase(GeneralDatabaseTestCase):
     @classmethod
-    def setUpClass(self):
-        self.original_output = "./testresults"
-        self.database_output = "data/testing/test_database"
-        self.PRS = parse.Parse("./binaries/ELF_shared_obj_test_no1/")
-        self.PRS(result_path=self.original_output)
+    def setUpClass(cls):
+        cls.original_output = "tests/testresults"
+        cls.database_output = "data/testing/test_database"
+        cls.PRS = parse.Parse("tests/binaries/ELF_shared_obj_test_no1/")
+        cls.PRS(result_path=cls.original_output)
 
     def testCommon(self):
         self.writeParse()
@@ -154,11 +171,11 @@ class X86ParseDatabaseTestCase(GeneralDatabaseTestCase):
 
 class ARMParseDatabaseTestCase(GeneralDatabaseTestCase):
     @classmethod
-    def setUpClass(self):
-        self.original_output = "./testresults"
-        self.database_output = "test_database"
-        self.PRS = parse.Parse("./binaries/ELF_shared_obj_test_arm/")
-        self.PRS(result_path=self.original_output)
+    def setUpClass(cls):
+        cls.original_output = "tests/testresults"
+        cls.database_output = "test_database"
+        cls.PRS = parse.Parse("tests/binaries/ELF_shared_obj_test_arm/")
+        cls.PRS(result_path=cls.original_output)
 
     def testCommon(self):
         self.writeParse()
@@ -168,12 +185,12 @@ class ARMParseDatabaseTestCase(GeneralDatabaseTestCase):
 
 class TestErrorHandling(unittest.TestCase):
     @classmethod
-    def setUpClass(self):
-        self.database = "test_database"
-        self.parse_path = "./binaries/Wintap/"
-        self.observe_path = "./binaries/Wintap/Wintap.exe"
-        self.PRS = parse.Parse(self.parse_path)
-        self.OBS = observe.Observe(self.observe_path)
+    def setUpClass(cls):
+        cls.database = "test_database"
+        cls.parse_path = "tests/binaries/Wintap/"
+        cls.observe_path = "tests/binaries/Wintap/Wintap.exe"
+        cls.PRS = parse.Parse(cls.parse_path)
+        cls.OBS = observe.Observe(cls.observe_path)
 
     def testBadPathParse(self):
         with self.assertRaises(FileNotFoundError):

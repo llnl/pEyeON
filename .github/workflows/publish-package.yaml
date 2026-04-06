@@ -1,4 +1,4 @@
-name: Release
+name: publish package to PyPI
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ jobs:
   build-wheel:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v6
@@ -22,7 +22,7 @@ jobs:
           python -m build
           python -m twine check dist/*
       - name: Upload Python package dist artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: python-package-dist
           path: dist
@@ -39,7 +39,7 @@ jobs:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
     - name: Download Python package dist artifacts
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v8
       with:
         name: python-package-dist
         path: dist

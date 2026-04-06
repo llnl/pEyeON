@@ -5,7 +5,7 @@
   "type": "object",
   "x-duckdb-table": "observations",
   "x-duckdb-pk": "uuid",
-  "required": ["bytecount", "filename", "filetype", "magic", "md5", "observation_ts", "sha1", "sha256", "uuid"],
+  "required": ["bytecount", "eyeon_version", "filename", "filetype", "magic", "md5", "observation_ts", "sha1", "sha256", "uuid"],
   "properties": {
     "bytecount": {
       "x-duckdb-type": "BIGINT",
@@ -16,14 +16,20 @@
       "type": "string",
       "description": "Compiler Identifier"
     },
+    "eyeon_version": {
+      "type": "string",
+      "description": "Eyeon release. This helps track data versions."
+    },
     "filename": {
       "type": "string",
       "description": "Basename of file"
     },
     "filetype": {
-      "type": "string",
-      "enum": ["ELF", "Malformed PE", "DOS", "Linux Kernel Image", "PE", "OLE", "MSCAB", "ISCAB", "DOCKER_GZIP", "GZIP", "BZIP2", "XZ", "DOCKER_TAR", "TAR", "RAR", "ZIP", "JAR", "WAR", "EAR", "APK", "IPA", "MSIX", "MACHOFAT", "JAVACLASS", "MACHOFAT", "MACHOFAT64", "EFIFAT", "MACHO32", "MACHO64", "LLVM_BITCODE", "LLVM_IR", "A.OUT big", "A.OUT little", "COFF", "XCOFF32", "XCOFF64", "ECOFF", "AR_LIB", "OMF_LIB", "UIMAGE", "ZLIB", "CPIO_BIN big", "CPIO_BIN little", "CPIO_ASCII_OLD", "CPIO_ASCII_NEW", "CPIO_ASCII_NEW_CRC", "ZSTANDARD", "ZSTANDARD_DICTIONARY", "ISO_9660_CD", "MACOS_DMG", "RPM Package"],
-      "description": "Specific file types recognized by EyeON. These are grouped together in the metadata definitions based on the properties they have in common"
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["ELF", "Malformed PE", "DOS", "Linux Kernel Image", "PE", "OLE", "MSCAB", "ISCAB", "DOCKER_GZIP", "GZIP", "BZIP2", "XZ", "DOCKER_TAR", "TAR", "RAR", "ZIP", "JAR", "WAR", "EAR", "APK", "IPA", "MSIX", "MACHOFAT", "JAVACLASS", "MACHOFAT", "MACHOFAT64", "EFIFAT", "MACHO32", "MACHO64", "LLVM_BITCODE", "LLVM_IR", "A.OUT big", "A.OUT little", "COFF", "XCOFF32", "XCOFF64", "ECOFF", "AR_LIB", "OMF_LIB", "UIMAGE", "ZLIB", "CPIO_BIN big", "CPIO_BIN little", "CPIO_ASCII_OLD", "CPIO_ASCII_NEW", "CPIO_ASCII_NEW_CRC", "ZSTANDARD", "ZSTANDARD_DICTIONARY", "ISO_9660_CD", "MACOS_DMG", "RPM Package"]
+      }
     },
     "imphash": {
       "type": "string",

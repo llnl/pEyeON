@@ -18,5 +18,5 @@ if [[ "$CONTAINER_HASH" ]]; then
     docker exec -it -u eyeon $CONTAINER_NAME /bin/bash
 else
     # Doesn't exist, creates a new container called eyeon
-    docker run --name "$CONTAINER_NAME" -p8888:8888 -p8501:8501 -it -v $(pwd):/workdir:Z peyeon /bin/bash
+    docker run --name "$CONTAINER_NAME" -p8888:8888 -p8501:8501 -it -v $(pwd):/workdir:Z ghcr.io/llnl/peyeon:main /bin/bash
 fi

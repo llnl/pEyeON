@@ -30,19 +30,14 @@ This dockerfile contains all the pertinent tools specific to data extraction. Th
 
 #### Docker
 ```bash
-wget https://raw.githubusercontent.com/LLNL/pEyeON/refs/heads/main/builds/docker-run.sh \
-     https://raw.githubusercontent.com/LLNL/pEyeON/refs/heads/main/builds/entrypoint.sh \
-     https://raw.githubusercontent.com/LLNL/pEyeON/refs/heads/main/builds/python3-slim-bookworm.Dockerfile
-docker build -t peyeon -f python3-slim-bookworm.Dockerfile .
+cd builds/
+docker build -t peyeon -f Dockerfile .
 chmod +x docker-run.sh && ./docker-run.sh
 ```
 #### Podman
 ```bash
-wget https://raw.githubusercontent.com/LLNL/pEyeON/refs/heads/main/builds/podman-build.sh \
-     https://raw.githubusercontent.com/LLNL/pEyeON/refs/heads/main/builds/podman-run.sh \
-     https://raw.githubusercontent.com/LLNL/pEyeON/refs/heads/main/builds/ubi8.Dockerfile
-chmod +x podman-build.sh && ./podman-build.sh
-chmod +x podman-run.sh && ./podman-run.sh
+podman build -t peyeon -f builds/podman.Dockerfile .
+chmod +x builds/podman-run.sh && ./builds/podman-run.sh
 ```
 
 This attaches the current directory as a working directory in the container. Files that need to be scanned should go in "tests" folder. If running in a docker container, the eyeon root directory is mounted to `/workdir`, so place samples in `/workdir/samples` or `/workdir/tests/samples`.
@@ -133,12 +128,93 @@ Example json file:
 obs = eyeon.parse.Parse(args.dir)
 ```
 
+#### Checksum Check
+
+The Eyeon tool has the ability to verify against a provided sha1, md5, or sha256 hash. This can be leveraged as a stand alone function or with observe command to record the result in the output. If no algorithm is specified with `-a, --algorithm` it will default to md5.
+
+```bash
+eyeon checksum -a [md5,sha1,sha256] <file> <provided_checksum>
+```
+
+For convenience you can parse, compress, and upload your results to box in a single command:
+
+```bash
+eyeon parse <dir> --upload
+```
+To set up box and upload results, see **Uploading Results** section below
+
+
+**Examples**
+Stand Alone Check
+```bash
+eyeon checksum -a sha256 tests/binaries/Wintap.exe bdd73b73b50350a55e27f64f022db0f62dd28a0f1d123f3468d3f0958c5fcc39
+```
+
+Eyeon Observe
+```bash
+eyeon observe tests/binaries/Wintap.exe -a sha256 -c bdd73b73b50350a55e27f64f022db0f62dd28a0f1d123f3468d3f0958c5fcc39
+```
+
+Recorded Result in Eyeon Output
+```json
+    "checksum_data": {
+        "algorithm": "sha256",
+        "expected": "bdd73b73b50350a55e27f64f022db0f62dd28a0f1d123f3468d3f0958c5fcc39",
+        "actual": "bdd73b73b50350a55e27f64f022db0f62dd28a0f1d123f3468d3f0958c5fcc39",
+        "verified": true
+    }
+```
+
 #### Jupyter Notebook
 If you want to run jupyter, the `./docker-run.sh` script exposes port 8888. Launch it from the `/workdir` or eyeon root directory via `jupyter notebook --ip=0.0.0.0 --no-browser` and open the `demo.ipynb` notebook for a quick demonstration.
 
 
 #### Streamlit app
 In the `src` directory, there exist the bones of a data exploration applet. To generate data for this, add the database flag like `eyeon parse -d tests/data/20240925-eyeon/dbhelpers/20240925-eyeon.db`. Then, if necessary, update the database path variable in the `src/streamlit/eyeon_settings.toml`. Note that the path needs to point to the grandparent directory of the `dbhelpers` directory. This is a specific path for the streamlit app; the streamlit directory has more information in its own README.
+
+## Uploading Results
+The Eyeon tool leverages the Box platform for data uploads and storage. All data handled by Eyeon is voluntarily submitted by users and securely stored in your Box account. If you wish to share the results of the eyeon tool with us please contact `eyeon@llnl.gov` to get setup.
+
+#### Authenticating with Box
+To use Eyeon with Box, you’ll need to generate a `box_tokens.json` file. This process requires a browser-friendly environment and will vary depending on your Eyeon build selection. Below are the steps when using a container setup:
+
+**Steps**:
+
+1. Create a Python virtual environment within the `PEYEON/` directory:
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+2. Install the Box SDK:
+```bash
+pip install boxsdk==3.14.0
+```
+3. Change into the `src/` directory:
+```bash
+cd src/
+```
+4. Start the authentication process:
+```bash
+python -m box.box_auth
+```
+This will guide you through authenticating with Box in your browser.
+
+Once authentication is complete and your `box_tokens.json` file is generated, you can start the Eyeon Docker container and use the commands listed below.
+
+#### List Items in Your Box Folder
+```bash
+eyeon box-list
+```
+
+Displays all items in your connected Box folder.
+
+#### Upload Results to Box
+
+```bash
+eyeon box-upload <archive>
+```
+
+Uploads the specified archive (zip, tar, tar.gz) to your Box folder.
 
 
 ## Future Work
