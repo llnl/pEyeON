@@ -34,7 +34,7 @@ dependencies=[
     # "oidc-client>=0.2.6",
     "requests>=2.32.4",
     "toml>=0.10.2",
-    "boxsdk==3.14.0",
+    "boxsdk==10.6.0",
     "pydantic_settings>=2.10.1",
 ]
 readme = "README.md"
