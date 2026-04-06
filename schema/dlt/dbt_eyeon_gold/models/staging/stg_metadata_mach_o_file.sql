@@ -1,0 +1,1 @@
+select * from {{ source('silver', 'metadata_mach_o_file') }}

@@ -1,0 +1,255 @@
+version: 4
+version_hash: doZsuCrhYjPumJLNMwEk7VxTvT/qgJ420uqk4rJwKNY=
+engine_version: 11
+name: eyeon_metadata
+tables:
+  _dlt_version:
+    columns:
+      version:
+        data_type: bigint
+        nullable: false
+      engine_version:
+        data_type: bigint
+        nullable: false
+      inserted_at:
+        data_type: timestamp
+        nullable: false
+      schema_name:
+        data_type: text
+        nullable: false
+      version_hash:
+        data_type: text
+        nullable: false
+      schema:
+        data_type: text
+        nullable: false
+    write_disposition: skip
+    resource: _dlt_version
+    description: Created by DLT. Tracks schema updates
+  _dlt_loads:
+    columns:
+      load_id:
+        data_type: text
+        nullable: false
+        precision: 64
+      schema_name:
+        data_type: text
+        nullable: true
+      status:
+        data_type: bigint
+        nullable: false
+      inserted_at:
+        data_type: timestamp
+        nullable: false
+      schema_version_hash:
+        data_type: text
+        nullable: true
+    write_disposition: skip
+    resource: _dlt_loads
+    description: Created by DLT. Tracks completed loads
+  raw_json:
+    columns:
+      json:
+        data_type: json
+        nullable: true
+      uuid:
+        data_type: text
+        nullable: true
+      source_path:
+        data_type: text
+        nullable: true
+      source_file:
+        data_type: text
+        nullable: true
+      _dlt_load_id:
+        data_type: text
+        nullable: false
+      _dlt_id:
+        data_type: text
+        nullable: false
+        unique: true
+        row_key: true
+    write_disposition: append
+    resource: raw_json
+    x-normalizer:
+      seen-data: true
+  _dlt_pipeline_state:
+    columns:
+      version:
+        data_type: bigint
+        nullable: false
+      engine_version:
+        data_type: bigint
+        nullable: false
+      pipeline_name:
+        data_type: text
+        nullable: false
+      state:
+        data_type: text
+        nullable: false
+      created_at:
+        data_type: timestamp
+        nullable: false
+      version_hash:
+        data_type: text
+        nullable: true
+      _dlt_load_id:
+        data_type: text
+        nullable: false
+        precision: 64
+      _dlt_id:
+        data_type: text
+        nullable: false
+        unique: true
+        row_key: true
+    write_disposition: append
+    file_format: preferred
+    resource: _dlt_pipeline_state
+    x-normalizer:
+      seen-data: true
+  batch_info:
+    columns:
+      _dlt_load_id:
+        data_type: text
+        nullable: false
+      run_ts:
+        data_type: timestamp
+        nullable: true
+      utility_id:
+        data_type: text
+        nullable: true
+      source:
+        data_type: text
+        nullable: true
+      depth:
+        data_type: bigint
+        nullable: true
+      hostname:
+        data_type: text
+        nullable: true
+      schema_blame_hack:
+        data_type: text
+        nullable: true
+      _dlt_id:
+        data_type: text
+        nullable: false
+        unique: true
+        row_key: true
+    write_disposition: append
+    resource: batch_resource
+    x-normalizer:
+      seen-data: true
+  raw_obs:
+    columns:
+      uuid:
+        nullable: false
+        primary_key: true
+        data_type: text
+      bytecount:
+        data_type: bigint
+        nullable: true
+      filename:
+        data_type: text
+        nullable: true
+      imphash:
+        data_type: text
+        nullable: true
+      magic:
+        data_type: text
+        nullable: true
+      modtime:
+        data_type: timestamp
+        nullable: true
+      observation_ts:
+        data_type: timestamp
+        nullable: true
+      permissions:
+        data_type: text
+        nullable: true
+      md5:
+        data_type: text
+        nullable: true
+      sha1:
+        data_type: text
+        nullable: true
+      sha256:
+        data_type: text
+        nullable: true
+      ssdeep:
+        data_type: text
+        nullable: true
+      source_path:
+        data_type: text
+        nullable: true
+      source_file:
+        data_type: text
+        nullable: true
+      _dlt_load_id:
+        data_type: text
+        nullable: false
+      _dlt_id:
+        data_type: text
+        nullable: false
+        unique: true
+        row_key: true
+    x-normalizer:
+      max_nesting: 4
+      seen-data: true
+    write_disposition: merge
+    resource: files_resource
+  metadata_unknown:
+    columns:
+      description:
+        data_type: text
+        nullable: true
+      uuid:
+        data_type: text
+        nullable: true
+      _metadata_table_name:
+        data_type: text
+        nullable: true
+      _dlt_load_id:
+        data_type: text
+        nullable: false
+      _dlt_id:
+        data_type: text
+        nullable: false
+        unique: true
+        row_key: true
+    write_disposition: append
+    x-normalizer:
+      max_nesting: 4
+      seen-data: true
+    resource: metadata_resource
+settings:
+  detections:
+  - iso_timestamp
+  default_hints:
+    not_null:
+    - _dlt_id
+    - _dlt_root_id
+    - _dlt_parent_id
+    - _dlt_list_idx
+    - _dlt_load_id
+    parent_key:
+    - _dlt_parent_id
+    root_key:
+    - _dlt_root_id
+    unique:
+    - _dlt_id
+    row_key:
+    - _dlt_id
+normalizers:
+  names: snake_case
+  json:
+    module: dlt.common.normalizers.json.relational
+    config:
+      propagation:
+        tables:
+          raw_obs:
+            _dlt_id: _dlt_root_id
+previous_hashes:
+- YfexLsMu6cOpsuSkfj+1bBlFnypkNe9o18kaIxYjQ/M=
+- UfULHyKCmAs454ZqqE7IwFEvLlML8KvpwdEewV7zrv0=
+- Tp488CGQdqmoFzU6ogJvqUqDeroz9xix7Vfnzj7sgWA=
+- zlnlF1nZ6gD7KKuk9EJ4y9+1AopThw4eqkAmogVpe0g=

@@ -1,0 +1,8 @@
+eyeon_gold:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('EYEON_DUCKDB_PATH', 'database/eyeon.duckdb') }}"
+      threads: 4
+      schema: gold

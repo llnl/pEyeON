@@ -1,0 +1,30 @@
+{{ config(materialized='table') }}
+
+select
+  cert_sha256,
+  issuer_sha256,
+  issuer_name,
+  subject_name,
+  {{ x509_attr('subject_name', 'C') }} as subject_country,
+  {{ x509_attr('subject_name', 'ST') }} as subject_state,
+  {{ x509_attr('subject_name', 'L') }} as subject_locality,
+  {{ x509_attr('subject_name', 'O') }} as subject_org,
+  {{ x509_attr('subject_name', 'OU') }} as subject_org_unit,
+  {{ x509_attr('subject_name', 'CN') }} as subject_common_name,
+  {{ x509_attr('issuer_name', 'C') }} as issuer_country,
+  {{ x509_attr('issuer_name', 'ST') }} as issuer_state,
+  {{ x509_attr('issuer_name', 'L') }} as issuer_locality,
+  {{ x509_attr('issuer_name', 'O') }} as issuer_org,
+  {{ x509_attr('issuer_name', 'OU') }} as issuer_org_unit,
+  {{ x509_attr('issuer_name', 'CN') }} as issuer_common_name,
+  issued_on,
+  expires_on,
+  signed_using,
+  rsa_key_size,
+  basic_constraints,
+  key_usage,
+  ext_key_usage,
+  certificate_policies,
+  serial_number,
+  basic_constraints like 'CA=true%' as is_ca
+from {{ ref('int_eyeon__unique_certificates') }}
