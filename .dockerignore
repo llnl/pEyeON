@@ -1,0 +1,5 @@
+.github
+eye
+__pycache__
+.pytest_cache
+*.pyc
