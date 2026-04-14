@@ -4,21 +4,33 @@ FROM $LATEST_PYTHON_3_13 AS builder
 RUN apt-get update \
     && apt-get install -y \
        git make wget unzip build-essential python3 python3-dev python3-venv \
-    && apt-get clean
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 
-RUN wget https://github.com/Kitware/CMake/releases/download/v3.30.3/cmake-3.30.3-linux-x86_64.sh \
-    && chmod u+x cmake-3.30.3-linux-x86_64.sh \
-    && mkdir /opt/cmake-3.30.3 \
-    && ./cmake-3.30.3-linux-x86_64.sh --skip-license --prefix=/opt/cmake-3.30.3 \
-    && rm cmake-3.30.3-linux-x86_64.sh \
-    && ln -s /opt/cmake-3.30.3/bin/* /usr/local/bin
+RUN arch=$(dpkg --print-architecture) \
+    && case "$arch" in \
+        amd64) cmake_arch=x86_64 ;; \
+        arm64) cmake_arch=aarch64 ;; \
+        *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; \
+    esac \
+    && cmake_version=3.30.3 \
+    && cmake_installer="cmake-${cmake_version}-linux-${cmake_arch}.sh" \
+    && wget "https://github.com/Kitware/CMake/releases/download/v${cmake_version}/${cmake_installer}" \
+    && chmod u+x "$cmake_installer" \
+    && mkdir -p "/opt/cmake-${cmake_version}" \
+    && "./$cmake_installer" --skip-license --prefix="/opt/cmake-${cmake_version}" \
+    && rm "$cmake_installer" \
+    && ln -sf /opt/cmake-${cmake_version}/bin/* /usr/local/bin
 
 RUN cd /opt && git clone https://github.com/trendmicro/tlsh.git \
     && cd /opt/tlsh \
     && ./make.sh
 
-RUN python3 -m venv /eye && /eye/bin/pip install peyeon
+COPY . /src
+RUN python3 -m venv /eye \
+    && /eye/bin/pip install --upgrade pip setuptools wheel \
+    && /eye/bin/pip install /src
 
 #################################################
 
@@ -28,7 +40,7 @@ COPY --from=builder /eye /eye
 
 RUN apt-get update \
     && apt-get install -y \
-      libmagic1 ssdeep jq gosu \
+      libmagic1 ssdeep jq \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
