@@ -30,10 +30,17 @@ This dockerfile contains all the pertinent tools specific to data extraction. Th
 
 #### Docker
 ```bash
-cd builds/
-docker build -t peyeon -f Dockerfile .
-chmod +x docker-run.sh && ./docker-run.sh
+docker build -f builds/Dockerfile -t peyeon .
+chmod +x builds/docker-run.sh && ./builds/docker-run.sh
 ```
+
+On Apple Silicon, a native local build is enough if your Docker engine is also running on Apple Silicon:
+
+```bash
+docker build -f builds/Dockerfile -t peyeon:arm64 .
+docker run --rm -it -v "$(pwd):/workdir" peyeon:arm64 eyeon --help
+```
+
 #### Podman
 ```bash
 podman build -t peyeon -f builds/podman.Dockerfile .
@@ -51,11 +58,43 @@ EyeON commands should work now.
 
 ### VM Install
 Alternatively, to install on a clean Ubuntu or RHEL8/9 VM:
+
+#### Ubuntu
+Ubuntu installs are split into root and user steps. Run the system dependency install once, then run the user environment setup whenever you want to recreate or refresh the virtual environment from the current checkout.
+
 ```bash
-wget https://raw.githubusercontent.com/LLNL/pEyeON/refs/heads/main/builds/install-ubuntu.sh
-chmod +x install-ubuntu.sh && ./install-ubuntu.sh
+sudo bash builds/install-ubuntu-root.sh
+bash builds/install-ubuntu-user.sh
 ```
 
+The compatibility wrapper `builds/install-ubuntu.sh` will run the root script when invoked with `sudo`, and the user script otherwise.
+
+If you previously ran an older Ubuntu install flow entirely with `sudo`, you may need to clean up Surfactant's temp state once:
+
+```bash
+sudo rm -f /tmp/.surfactant_extracted_dirs.json
+```
+
+#### Ubuntu on Apple Silicon with Multipass
+On an Apple Silicon Mac, a native Ubuntu VM can be created with Multipass:
+
+```bash
+multipass launch 24.04 --name eyeon-arm --cpus 4 --memory 8G --disk 40G
+multipass mount ~/git/LLNL/pEyeON eyeon-arm:/workspace/pEyeON
+multipass shell eyeon-arm
+cd /workspace/pEyeON
+sudo bash builds/install-ubuntu-root.sh
+bash builds/install-ubuntu-user.sh
+```
+
+Verify the CLI inside the VM:
+
+```bash
+source eye/bin/activate
+eyeon --help
+```
+
+#### RHEL8/9
 ```bash
 wget https://raw.githubusercontent.com/LLNL/pEyeON/refs/heads/main/builds/install-rhel.sh
 chmod +x install-rhel.sh && ./install-rhel.sh
