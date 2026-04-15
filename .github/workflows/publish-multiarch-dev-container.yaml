@@ -2,7 +2,9 @@ name: Publish Dev Multi-Arch Container
 
 on:
   workflow_dispatch:
-
+  push:
+      branches:
+        - linux-arm
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}-dev
