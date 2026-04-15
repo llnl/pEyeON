@@ -1,32 +1,32 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
-# Get owner of the mounted volume
-VOLUME_UID=$(stat -c '%u' /workdir)
-VOLUME_GID=$(stat -c '%g' /workdir)
+TARGET_UID="${EYEON_UID:-}"
+TARGET_GID="${EYEON_GID:-}"
 
-USER=eyeon
-
-# Create user with same UID/GID if it doesn't match root
-if [ "$VOLUME_UID" = "0" ]; then
-    VOLUME_UID=1000
-    VOLUME_GID=1000
+# Prefer the caller's explicit UID/GID when provided. Fall back to the mounted
+# workdir owner for older launchers that don't pass them through.
+if [[ -z "$TARGET_UID" || -z "$TARGET_GID" ]]; then
+    TARGET_UID=$(stat -c '%u' /workdir)
+    TARGET_GID=$(stat -c '%g' /workdir)
 fi
 
-# Create group if it doesn't exist
-if ! getent group $VOLUME_GID > /dev/null 2>&1; then
-    groupadd -g $VOLUME_GID eyeon
+# Older Docker setups may report the bind mount as root-owned. Preserve the
+# previous fallback for compatibility with the interactive helper scripts.
+if [[ "$TARGET_UID" == "0" ]]; then
+    TARGET_UID=1000
+    TARGET_GID=1000
 fi
 
-# Create user if it doesn't exist
-if ! getent passwd $VOLUME_UID > /dev/null 2>&1; then
-    useradd -u $VOLUME_UID -g $VOLUME_GID -s /bin/bash -m eyeon
+# Create group if it doesn't exist.
+if ! getent group "$TARGET_GID" > /dev/null 2>&1; then
+    groupadd -g "$TARGET_GID" eyeon
 fi
 
-#change ownership of /tmp to eyeon for surfactant
-chown -R $VOLUME_UID:$VOLUME_GID /tmp
-chmod g+s /tmp
+# Create user if it doesn't exist.
+if ! getent passwd "$TARGET_UID" > /dev/null 2>&1; then
+    useradd -u "$TARGET_UID" -g "$TARGET_GID" -s /bin/bash -m eyeon
+fi
 
-# Run the command as the appropriate user
-exec gosu $VOLUME_UID:$VOLUME_GID "$@"
+exec gosu "$TARGET_UID:$TARGET_GID" "$@"
