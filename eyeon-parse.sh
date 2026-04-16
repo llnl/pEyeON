@@ -20,6 +20,7 @@ set -euo pipefail
 #   EYEON_OWNER        (required when running as root unless passthrough is enabled)
 #   EYEON_UID / EYEON_GID
 #   EYEON_PASSTHROUGH_ROOT=1 (intentionally create root-owned outputs)
+#   DEBUG=1            (print docker/env details and launch an interactive debug shell)
 #
 # Example dev image override:
 #   EYEON_IMAGE=ghcr.io/llnl/peyeon-dev:dev-<sha> ./eyeon-parse.sh UTIL_CD SOURCE
@@ -52,7 +53,7 @@ read_dataset_path_from_toml() {
 
 usage() {
   cat >&2 <<EOF
-Usage: $(basename "$0") [--util-cd UTIL_CD] [--dir SOURCE] [--threads THREADS] [--image IMAGE] [--dataset-path DATASET_PATH]
+Usage: $(basename "$0") [--util-cd UTIL_CD] [--dir SOURCE] [--threads THREADS] [--image IMAGE] [--dataset-path DATASET_PATH] [--debug]
        $(basename "$0") UTIL_CD SOURCE [DATASET_PATH] [THREADS]
 
 Command line args override environment variables.
@@ -66,7 +67,13 @@ Environment variables:
   EYEON_OWNER        Required when running as root unless passthrough is enabled
   EYEON_UID/GID      Explicit numeric owner override for runtime outputs
   EYEON_PASSTHROUGH_ROOT=1  Intentionally create root-owned outputs
+  DEBUG=1            Print docker/env details and launch an interactive debug shell
 EOF
+}
+
+print_command() {
+  printf '%q ' "$@"
+  printf '\n'
 }
 
 resolve_owner_ids() {
@@ -90,6 +97,7 @@ OWNER_OVERRIDE="${EYEON_OWNER:-}"
 HOST_UID="${EYEON_UID:-}"
 HOST_GID="${EYEON_GID:-}"
 PASSTHROUGH_ROOT="${EYEON_PASSTHROUGH_ROOT:-0}"
+DEBUG_MODE="${DEBUG:-0}"
 UTIL_CD_FLAG_SET=0
 SOURCE_FLAG_SET=0
 THREADS_FLAG_SET=0
@@ -144,6 +152,10 @@ while [[ $# -gt 0 ]]; do
       fi
       DATASET_PATH="${2:-}"
       shift 2
+      ;;
+    --debug)
+      DEBUG_MODE=1
+      shift
       ;;
     -h|--help)
       usage
@@ -249,17 +261,52 @@ fi
 # Create a structured name for the parsed batch of data using a timestamp and the UTIL_CD.
 ts="$(date -u +'%Y%m%dT%H%M%SZ')"
 O="${ts}_${UTIL_CD}"
+OUTPUT_DIR="$DATASET_PATH/$O"
 
-mkdir -p "$DATASET_PATH/$O"
+mkdir -p "$OUTPUT_DIR"
 
 if [[ "$EUID" -eq 0 && "$HOST_UID:$HOST_GID" != "0:0" ]]; then
-  chown "$HOST_UID:$HOST_GID" "$DATASET_PATH/$O"
+  chown "$HOST_UID:$HOST_GID" "$OUTPUT_DIR"
 fi
 
-exec docker run \
-  -e "EYEON_UID=$HOST_UID" \
-  -e "EYEON_GID=$HOST_GID" \
-  -v "$SOURCE:/source:ro" \
-  -v "$DATASET_PATH:/workdir:rw,Z" \
-  "$IMAGE" \
-  eyeon parse -o "/workdir/$O" -t "$THREADS" /source
+container_cmd=(eyeon parse -o "/workdir/$O" -t "$THREADS" /source)
+debug_command="$(printf '%q ' "${container_cmd[@]}")"
+debug_command="${debug_command% }"
+
+docker_cmd=(docker run --rm)
+
+if [[ "$DEBUG_MODE" == "1" ]]; then
+  if [[ -t 0 && -t 1 ]]; then
+    docker_cmd+=(-it)
+  else
+    docker_cmd+=(-i)
+  fi
+fi
+
+docker_cmd+=(
+  -e "EYEON_UID=$HOST_UID"
+  -e "EYEON_GID=$HOST_GID"
+  -e "DEBUG=$DEBUG_MODE"
+  -e "EYEON_DEBUG_COMMAND=$debug_command"
+  -v "$SOURCE:/source:ro"
+  -v "$DATASET_PATH:/workdir:rw,Z"
+  "$IMAGE"
+)
+
+if [[ "$DEBUG_MODE" == "1" ]]; then
+  echo "DEBUG=1" >&2
+  echo "IMAGE=$IMAGE" >&2
+  echo "UTIL_CD=$UTIL_CD" >&2
+  echo "SOURCE=$SOURCE" >&2
+  echo "DATASET_PATH=$DATASET_PATH" >&2
+  echo "OUTPUT_DIR=$OUTPUT_DIR" >&2
+  echo "THREADS=$THREADS" >&2
+  echo "HOST_UID=$HOST_UID" >&2
+  echo "HOST_GID=$HOST_GID" >&2
+  echo "EYEON_DEBUG_COMMAND=$debug_command" >&2
+  echo "Docker command:" >&2
+  print_command "${docker_cmd[@]}" bash >&2
+  exec "${docker_cmd[@]}" bash
+fi
+
+exec "${docker_cmd[@]}" "${container_cmd[@]}"
