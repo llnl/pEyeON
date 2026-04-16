@@ -12,13 +12,6 @@ if [[ -z "$TARGET_UID" || -z "$TARGET_GID" ]]; then
     TARGET_GID=$(stat -c '%g' /workdir)
 fi
 
-# Older Docker setups may report the bind mount as root-owned. Preserve the
-# previous fallback for compatibility with the interactive helper scripts.
-if [[ "$TARGET_UID" == "0" ]]; then
-    TARGET_UID=1000
-    TARGET_GID=1000
-fi
-
 # Surfactant may leave a root-owned temp state file behind during image build.
 # Remove it before dropping privileges so the runtime user can recreate it.
 if [[ -e /tmp/.surfactant_extracted_dirs.json && ! -w /tmp/.surfactant_extracted_dirs.json ]]; then

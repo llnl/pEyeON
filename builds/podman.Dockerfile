@@ -46,7 +46,9 @@ RUN apt-get update \
 
 ENV PATH="/eye/bin:$PATH"
 
-# pull the plugin dbs
-RUN surfactant plugin update-db --all
+# pull the plugin dbs, then remove Surfactant's root-owned temp state so the
+# runtime user can recreate it as needed.
+RUN surfactant plugin update-db --all \
+    && rm -f /tmp/.surfactant_extracted_dirs.json
 
 WORKDIR /workdir
