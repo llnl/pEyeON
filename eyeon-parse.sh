@@ -8,7 +8,7 @@ set -euo pipefail
 #
 # Usage:
 #   eyeon-parse [--util-cd UTIL_CD] [--dir SOURCE] [--threads THREADS] \
-#               [--image IMAGE] [--dataset-path DATASET_PATH]
+#               [--image IMAGE] [--dataset-path DATASET_PATH] [--runtime RUNTIME]
 #   eyeon-parse UTIL_CD SOURCE [DATASET_PATH] [THREADS]
 #
 # Environment variables (optional):
@@ -20,6 +20,7 @@ set -euo pipefail
 #   EYEON_OWNER        (required when running as root unless passthrough is enabled)
 #   EYEON_UID / EYEON_GID
 #   EYEON_PASSTHROUGH_ROOT=1 (intentionally create root-owned outputs)
+#   EYEON_CONTAINER_RUNTIME=docker|podman
 #   DEBUG=1            (print docker/env details and launch an interactive debug shell)
 #
 # Example dev image override:
@@ -53,7 +54,7 @@ read_dataset_path_from_toml() {
 
 usage() {
   cat >&2 <<EOF
-Usage: $(basename "$0") [--util-cd UTIL_CD] [--dir SOURCE] [--threads THREADS] [--image IMAGE] [--dataset-path DATASET_PATH] [--debug]
+Usage: $(basename "$0") [--util-cd UTIL_CD] [--dir SOURCE] [--threads THREADS] [--image IMAGE] [--dataset-path DATASET_PATH] [--runtime RUNTIME] [--debug]
        $(basename "$0") UTIL_CD SOURCE [DATASET_PATH] [THREADS]
 
 Command line args override environment variables.
@@ -67,6 +68,7 @@ Environment variables:
   EYEON_OWNER        Required when running as root unless passthrough is enabled
   EYEON_UID/GID      Explicit numeric owner override for runtime outputs
   EYEON_PASSTHROUGH_ROOT=1  Intentionally create root-owned outputs
+  EYEON_CONTAINER_RUNTIME  Runtime override: docker or podman
   DEBUG=1            Print docker/env details and launch an interactive debug shell
 EOF
 }
@@ -88,6 +90,50 @@ resolve_owner_ids() {
   HOST_GID="$(id -g "$owner")"
 }
 
+resolve_runtime() {
+  if [[ -n "$CONTAINER_RUNTIME" ]]; then
+    case "$CONTAINER_RUNTIME" in
+      docker|podman)
+        return
+        ;;
+      *)
+        echo "Unsupported container runtime: $CONTAINER_RUNTIME" >&2
+        echo "Use docker or podman." >&2
+        exit 2
+        ;;
+    esac
+  fi
+
+  local has_docker=0
+  local has_podman=0
+
+  if command -v docker >/dev/null 2>&1; then
+    has_docker=1
+  fi
+
+  if command -v podman >/dev/null 2>&1; then
+    has_podman=1
+  fi
+
+  if [[ "$has_docker" -eq 1 && "$has_podman" -eq 0 ]]; then
+    CONTAINER_RUNTIME=docker
+    return
+  fi
+
+  if [[ "$has_docker" -eq 0 && "$has_podman" -eq 1 ]]; then
+    CONTAINER_RUNTIME=podman
+    return
+  fi
+
+  if [[ "$has_docker" -eq 1 && "$has_podman" -eq 1 ]]; then
+    echo "Both docker and podman are installed. Set EYEON_CONTAINER_RUNTIME or use --runtime." >&2
+    exit 2
+  fi
+
+  echo "Neither docker nor podman is installed or available in PATH." >&2
+  exit 2
+}
+
 IMAGE="${EYEON_IMAGE:-ghcr.io/llnl/peyeon-dev:dev}"
 DATASET_PATH="${EYEON_DATASET_PATH:-}"
 UTIL_CD="${EYEON_UTIL_CD:-}"
@@ -97,6 +143,7 @@ OWNER_OVERRIDE="${EYEON_OWNER:-}"
 HOST_UID="${EYEON_UID:-}"
 HOST_GID="${EYEON_GID:-}"
 PASSTHROUGH_ROOT="${EYEON_PASSTHROUGH_ROOT:-0}"
+CONTAINER_RUNTIME="${EYEON_CONTAINER_RUNTIME:-}"
 DEBUG_MODE="${DEBUG:-0}"
 UTIL_CD_FLAG_SET=0
 SOURCE_FLAG_SET=0
@@ -151,6 +198,15 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       DATASET_PATH="${2:-}"
+      shift 2
+      ;;
+    --runtime)
+      if [[ $# -lt 2 || "$2" == -* ]]; then
+        echo "Missing value for --runtime" >&2
+        usage
+        exit 2
+      fi
+      CONTAINER_RUNTIME="${2:-}"
       shift 2
       ;;
     --debug)
@@ -258,6 +314,8 @@ if ! [[ "$HOST_UID" =~ ^[0-9]+$ && "$HOST_GID" =~ ^[0-9]+$ ]]; then
   exit 2
 fi
 
+resolve_runtime
+
 # Create a structured name for the parsed batch of data using a timestamp and the UTIL_CD.
 ts="$(date -u +'%Y%m%dT%H%M%SZ')"
 O="${ts}_${UTIL_CD}"
@@ -273,28 +331,42 @@ container_cmd=(eyeon parse -o "/workdir/$O" -t "$THREADS" /source)
 debug_command="$(printf '%q ' "${container_cmd[@]}")"
 debug_command="${debug_command% }"
 
-docker_cmd=(docker run --rm)
+runtime_cmd=("$CONTAINER_RUNTIME" run --rm)
 
 if [[ "$DEBUG_MODE" == "1" ]]; then
   if [[ -t 0 && -t 1 ]]; then
-    docker_cmd+=(-it)
+    runtime_cmd+=(-it)
   else
-    docker_cmd+=(-i)
+    runtime_cmd+=(-i)
   fi
 fi
 
-docker_cmd+=(
-  -e "EYEON_UID=$HOST_UID"
-  -e "EYEON_GID=$HOST_GID"
-  -e "DEBUG=$DEBUG_MODE"
-  -e "EYEON_DEBUG_COMMAND=$debug_command"
-  -v "$SOURCE:/source:ro"
-  -v "$DATASET_PATH:/workdir:rw,Z"
-  "$IMAGE"
-)
+case "$CONTAINER_RUNTIME" in
+  docker)
+    runtime_cmd+=(
+      -e "EYEON_UID=$HOST_UID"
+      -e "EYEON_GID=$HOST_GID"
+      -e "DEBUG=$DEBUG_MODE"
+      -e "EYEON_DEBUG_COMMAND=$debug_command"
+      -v "$SOURCE:/source:ro"
+      -v "$DATASET_PATH:/workdir:rw,Z"
+      "$IMAGE"
+    )
+    ;;
+  podman)
+    runtime_cmd+=(
+      -e "DEBUG=$DEBUG_MODE"
+      -e "EYEON_DEBUG_COMMAND=$debug_command"
+      -v "$SOURCE:/source:ro"
+      -v "$DATASET_PATH:/workdir:rw"
+      "$IMAGE"
+    )
+    ;;
+esac
 
 if [[ "$DEBUG_MODE" == "1" ]]; then
   echo "DEBUG=1" >&2
+  echo "RUNTIME=$CONTAINER_RUNTIME" >&2
   echo "IMAGE=$IMAGE" >&2
   echo "UTIL_CD=$UTIL_CD" >&2
   echo "SOURCE=$SOURCE" >&2
@@ -304,9 +376,9 @@ if [[ "$DEBUG_MODE" == "1" ]]; then
   echo "HOST_UID=$HOST_UID" >&2
   echo "HOST_GID=$HOST_GID" >&2
   echo "EYEON_DEBUG_COMMAND=$debug_command" >&2
-  echo "Docker command:" >&2
-  print_command "${docker_cmd[@]}" bash >&2
-  exec "${docker_cmd[@]}" bash
+  echo "Container command:" >&2
+  print_command "${runtime_cmd[@]}" bash >&2
+  exec "${runtime_cmd[@]}" bash
 fi
 
-exec "${docker_cmd[@]}" "${container_cmd[@]}"
+exec "${runtime_cmd[@]}" "${container_cmd[@]}"
