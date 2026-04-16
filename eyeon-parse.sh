@@ -252,7 +252,10 @@ O="${ts}_${UTIL_CD}"
 
 mkdir -p "$DATASET_PATH/$O"
 
-# Removed rm for testing...
+if [[ "$EUID" -eq 0 && "$HOST_UID:$HOST_GID" != "0:0" ]]; then
+  chown "$HOST_UID:$HOST_GID" "$DATASET_PATH/$O"
+fi
+
 exec docker run \
   -e "EYEON_UID=$HOST_UID" \
   -e "EYEON_GID=$HOST_GID" \
