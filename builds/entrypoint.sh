@@ -19,6 +19,12 @@ if [[ "$TARGET_UID" == "0" ]]; then
     TARGET_GID=1000
 fi
 
+# Surfactant may leave a root-owned temp state file behind during image build.
+# Remove it before dropping privileges so the runtime user can recreate it.
+if [[ -e /tmp/.surfactant_extracted_dirs.json && ! -w /tmp/.surfactant_extracted_dirs.json ]]; then
+    rm -f /tmp/.surfactant_extracted_dirs.json
+fi
+
 # Create group if it doesn't exist.
 if ! getent group "$TARGET_GID" > /dev/null 2>&1; then
     groupadd -g "$TARGET_GID" eyeon
