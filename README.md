@@ -25,36 +25,37 @@ pip install peyeon
 
 However, this does not install several key dependencies, namely `libmagic`, `ssdeep`, and `tlsh`. A better way to install is via the container or install scripts on the github page.
 
-### Dockerfile
-This dockerfile contains all the pertinent tools specific to data extraction. The main tools needed are `ssdeep`, `libmagic`, `tlsh`, and `detect-it-easy`. We have written some convenient scripts for both docker and podman installations:
+### Containers
+The container images include the main extraction dependencies such as `ssdeep`, `libmagic`, `tlsh`, and `detect-it-easy`.
 
-#### Docker
+#### Published Multi-Arch Image
+The primary container image is published to GHCR as a multi-arch image. The same tag works on both `amd64` and `arm64` hosts, and Docker will pull the matching architecture automatically.
+
+```bash
+docker pull ghcr.io/llnl/peyeon:latest
+docker run --rm ghcr.io/llnl/peyeon:latest eyeon --help
+```
+
+To test a development image without touching the released image, override the tag explicitly:
+
+```bash
+docker pull ghcr.io/llnl/peyeon-dev:dev
+docker run --rm ghcr.io/llnl/peyeon-dev:dev eyeon --help
+```
+
+#### Local Docker Build
 ```bash
 docker build -f builds/Dockerfile -t peyeon .
-chmod +x builds/docker-run.sh && ./builds/docker-run.sh
+docker run --rm -it -v "$(pwd):/workdir:Z" peyeon /bin/bash
 ```
 
-On Apple Silicon, a native local build is enough if your Docker engine is also running on Apple Silicon:
-
-```bash
-docker build -f builds/Dockerfile -t peyeon:arm64 .
-docker run --rm -it -v "$(pwd):/workdir" peyeon:arm64 eyeon --help
-```
-
-#### Podman
+#### Local Podman Build
 ```bash
 podman build -t peyeon -f builds/podman.Dockerfile .
-chmod +x builds/podman-run.sh && ./builds/podman-run.sh
+podman run --rm -it -v "$(pwd):/workdir:rw" peyeon /bin/bash
 ```
 
-This attaches the current directory as a working directory in the container. Files that need to be scanned should go in "tests" folder. If running in a docker container, the eyeon root directory is mounted to `/workdir`, so place samples in `/workdir/samples` or `/workdir/tests/samples`.
-
-Cd into workdir directory:
-```bash
-cd workdir
-```
-
-EyeON commands should work now.
+These direct `docker run` and `podman run` examples are intended for interactive development shells and demos. The primary compute-oriented container workflow is `eyeon-parse.sh`, documented in its own section below.
 
 ### VM Install
 Alternatively, to install on a clean Ubuntu or RHEL8/9 VM:
@@ -167,6 +168,135 @@ Example json file:
 obs = eyeon.parse.Parse(args.dir)
 ```
 
+### eyeon-parse.sh
+`eyeon-parse.sh` is the primary container wrapper for batch parsing. It treats the container as compute only:
+
+- the source directory is mounted read-only at `/source`
+- the dataset root is mounted read-write at `/workdir`
+- parse output is written directly back to the host under the dataset root
+
+The wrapper creates a timestamped output directory named `<timestamp>_<UTIL_CD>` under the dataset path and then runs `eyeon parse` inside the container.
+
+#### Basic Usage
+Option form:
+
+```bash
+./eyeon-parse.sh --util-cd UTIL_CD --dir SOURCE --dataset-path DATASET_PATH --threads 8
+```
+
+Positional form:
+
+```bash
+./eyeon-parse.sh UTIL_CD SOURCE [DATASET_PATH] [THREADS]
+```
+
+Examples:
+
+```bash
+./eyeon-parse.sh TESTSITE ./samples /data/eyeon
+./eyeon-parse.sh TESTSITE ./samples /data/eyeon 16
+./eyeon-parse.sh TESTSITE ./samples 16
+```
+
+`THREADS` defaults to `8`.
+
+If `DATASET_PATH` is not provided, the wrapper uses `datasets.dataset_path` from `EyeOnData.toml`. If that is also unset, it falls back to `$HOME/data/eyeon`.
+
+#### Container Image Selection
+By default the wrapper uses the published production image:
+
+```bash
+ghcr.io/llnl/peyeon:latest
+```
+
+To test a dev image, override `EYEON_IMAGE`:
+
+```bash
+EYEON_IMAGE=ghcr.io/llnl/peyeon-dev:dev ./eyeon-parse.sh TESTSITE ./samples /data/eyeon
+```
+
+#### Runtime Selection
+`eyeon-parse.sh` supports both Docker and Podman.
+
+- set `EYEON_CONTAINER_RUNTIME=docker` or `EYEON_CONTAINER_RUNTIME=podman`
+- or pass `--runtime docker` / `--runtime podman`
+- if neither is set, the wrapper auto-selects the runtime only when exactly one of them is installed
+- if both are installed, the wrapper stops and asks you to choose explicitly
+
+Examples:
+
+```bash
+./eyeon-parse.sh --runtime docker TESTSITE ./samples /data/eyeon
+./eyeon-parse.sh --runtime podman TESTSITE ./samples /data/eyeon
+EYEON_CONTAINER_RUNTIME=podman ./eyeon-parse.sh TESTSITE ./samples /data/eyeon
+```
+
+For Podman, the wrapper relies on Podman's default runtime behavior instead of passing explicit UID/GID overrides.
+
+#### Ownership Behavior
+When run as a normal user, the wrapper passes your current UID and GID into the container so output files remain owned by you on the host.
+
+When run as `root`, the wrapper requires you to choose the output owner explicitly unless you intentionally want root-owned output files.
+
+Run as root but write files as a named user:
+
+```bash
+EYEON_OWNER=alice ./eyeon-parse.sh TESTSITE ./samples /data/eyeon
+```
+
+Run as root with explicit numeric ownership:
+
+```bash
+EYEON_UID=12345 EYEON_GID=12345 ./eyeon-parse.sh TESTSITE ./samples /data/eyeon
+```
+
+Intentionally allow root-owned outputs:
+
+```bash
+EYEON_PASSTHROUGH_ROOT=1 ./eyeon-parse.sh TESTSITE ./samples /data/eyeon
+```
+
+#### Runtime Matrix
+
+| Runtime | Host mode | Wrapper behavior | In-container write identity | Resulting host file ownership |
+| --- | --- | --- | --- | --- |
+| Docker | Normal user | Passes caller UID/GID into container | `entrypoint.sh` remaps with `gosu` to caller UID/GID | Caller UID/GID |
+| Docker | Root shell with `EYEON_OWNER` or `EYEON_UID`/`EYEON_GID` | Resolves target owner, `chown`s new output dir, passes target UID/GID | `entrypoint.sh` remaps with `gosu` to requested UID/GID | Requested UID/GID |
+| Docker | Root shell with `EYEON_PASSTHROUGH_ROOT=1` | Passes root through intentionally | Root | Root |
+| Podman | Normal user | Does not pass UID/GID overrides | Podman default rootless mapping | Caller UID/GID |
+| Podman | Root shell | Root-run Podman path is not the primary tested mode | Runtime-dependent | Treat as admin/debug use only |
+
+Notes:
+
+- Docker uses explicit UID/GID handoff from the wrapper into the container.
+- Podman currently works best by relying on Podman's default runtime behavior rather than forcing UID/GID overrides.
+- In root-run Docker mode, the wrapper must know which non-root host owner should receive the output files.
+- The wrapper creates the timestamped output directory on the host before launching the container. In root-run Docker mode it also `chown`s that directory to the requested target owner before execution.
+
+#### Debug Mode
+Set `DEBUG=1` or pass `--debug` to turn the wrapper into an interactive debugging session.
+
+```bash
+DEBUG=1 ./eyeon-parse.sh TESTSITE ./samples /data/eyeon
+./eyeon-parse.sh --debug TESTSITE ./samples /data/eyeon
+```
+
+Debug mode does the following:
+
+- prints the resolved wrapper environment values
+- prints the full `docker run` command before launch
+- passes `DEBUG=1` into the container
+- prints entrypoint and runtime UID/GID information inside the container
+- shows metadata for `/source`, `/workdir`, and `/tmp`
+- opens an interactive `bash` shell instead of immediately running `eyeon parse`
+
+Inside the debug shell, the intended parse command is written to `/tmp/eyeon-debug-command.sh` so it can be inspected or run directly:
+
+```bash
+cat /tmp/eyeon-debug-command.sh
+/tmp/eyeon-debug-command.sh
+```
+
 #### Checksum Check
 
 The Eyeon tool has the ability to verify against a provided sha1, md5, or sha256 hash. This can be leveraged as a stand alone function or with observe command to record the result in the output. If no algorithm is specified with `-a, --algorithm` it will default to md5.
@@ -205,7 +335,14 @@ Recorded Result in Eyeon Output
 ```
 
 #### Jupyter Notebook
-If you want to run jupyter, the `./docker-run.sh` script exposes port 8888. Launch it from the `/workdir` or eyeon root directory via `jupyter notebook --ip=0.0.0.0 --no-browser` and open the `demo.ipynb` notebook for a quick demonstration.
+If you want to run jupyter from the container, launch the image with the notebook port exposed and a bind mount for your working directory:
+
+```bash
+docker run --rm -it -p 8888:8888 -v "$(pwd):/workdir:Z" ghcr.io/llnl/peyeon:latest /bin/bash
+jupyter notebook --ip=0.0.0.0 --no-browser
+```
+
+Then open the `demo.ipynb` notebook for a quick demonstration.
 
 
 #### Streamlit app
