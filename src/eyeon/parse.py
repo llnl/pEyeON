@@ -38,7 +38,6 @@ class Parse:
             "filetype": [],
             "metadata": {
                 "error": {
-                    "type": "metadata",
                     "message": message,
                 }
             },

@@ -424,7 +424,6 @@ class Observe:
                 logger.debug(f"No plugin produced metadata for {file}, using error fallback")
                 self.metadata = {
                     "error": {
-                        "type": "metadata",
                         "message": plugin_errors[0]["message"],
                     }
                 }
@@ -439,7 +438,6 @@ class Observe:
                 }
         elif plugin_errors:
             self.metadata["error"] = {
-                "type": "metadata",
                 "message": plugin_errors[0]["message"],
             }
 
