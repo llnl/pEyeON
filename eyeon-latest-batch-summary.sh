@@ -134,24 +134,17 @@ summarize_batch_dir() {
   fi
 
   printf 'Metadata type counts:\n'
-  jq -nr '
-    def metadata_types:
-      (.metadata // {}) as $metadata
-      | ($metadata | keys_unsorted) as $keys
-      | if ($keys | length) == 0 then ["none"] else $keys end;
-
-    reduce inputs as $observation
-      ({};
-        reduce ($observation | metadata_types[]) as $type
-          (.;
-            .[$type] = (.[$type] // 0) + 1
-          )
-      )
-    | to_entries
-    | sort_by(.key)
-    | .[]
-    | "  \(.key): \(.value)"
-  ' "$batch_dir"/*.json
+  find "$batch_dir" -maxdepth 1 -type f -name '*.json' -print0 \
+    | xargs -0 jq -r '
+        (.metadata // {}) as $metadata
+        | ($metadata | keys_unsorted) as $keys
+        | if ($keys | length) == 0 then "none" else $keys[] end
+      ' \
+    | LC_ALL=C sort \
+    | uniq -c \
+    | while read -r count metadata_type; do
+        printf '  %s: %s\n' "$metadata_type" "$count"
+      done
 }
 
 resolve_batch_dir() {
