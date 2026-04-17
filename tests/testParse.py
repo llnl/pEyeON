@@ -94,34 +94,6 @@ class X86ParseTestCase(unittest.TestCase):
 
         mock_logger.warning.assert_called_once_with("No such file does_not_exist.txt.")
 
-    @patch("eyeon.parse.logger")
-    @patch("eyeon.parse.Observe")
-    def test_generic_error_writes_metadata_error_json(self, mock_observe, mock_logger):
-        mock_observe.side_effect = RuntimeError("metadata extraction failed")
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            sample_file = Path(tmpdir) / "sample.bin"
-            sample_file.write_bytes(b"hello")
-            outdir = Path(tmpdir) / "results"
-
-            p = parse.Parse("/dev/null")
-            p._observe((str(sample_file), str(outdir)))
-
-            outputs = list(outdir.glob("*.json"))
-            self.assertEqual(len(outputs), 1)
-
-            with open(outputs[0]) as f:
-                observation = json.load(f)
-
-            self.assertEqual(observation["filename"], "sample.bin")
-            self.assertEqual(observation["metadata"]["error"]["type"], "metadata")
-            self.assertEqual(
-                observation["metadata"]["error"]["message"],
-                "metadata extraction failed",
-            )
-            self.assertEqual(observation["signatures"], [])
-            mock_logger.exception.assert_called_once()
-
     @patch("eyeon.parse.time.time")
     @patch("eyeon.parse.os.getpid")
     @patch.object(parse.Parse, "_observe")
@@ -306,6 +278,36 @@ class TestParseFunctions(unittest.TestCase):
             any("possible hung process" in msg for msg in logged_messages),
             msg=f"warning not found in: {logged_messages}",
         )
+
+
+class TestParseErrorFallback(unittest.TestCase):
+    @patch("eyeon.parse.logger")
+    @patch("eyeon.parse.Observe")
+    def test_generic_error_writes_metadata_error_json(self, mock_observe, mock_logger):
+        mock_observe.side_effect = RuntimeError("metadata extraction failed")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            sample_file = Path(tmpdir) / "sample.bin"
+            sample_file.write_bytes(b"hello")
+            outdir = Path(tmpdir) / "results"
+
+            p = parse.Parse("/dev/null")
+            p._observe((str(sample_file), str(outdir)))
+
+            outputs = list(outdir.glob("*.json"))
+            self.assertEqual(len(outputs), 1)
+
+            with open(outputs[0]) as f:
+                observation = json.load(f)
+
+            self.assertEqual(observation["filename"], "sample.bin")
+            self.assertEqual(observation["metadata"]["error"]["type"], "metadata")
+            self.assertEqual(
+                observation["metadata"]["error"]["message"],
+                "metadata extraction failed",
+            )
+            self.assertEqual(observation["signatures"], [])
+            mock_logger.exception.assert_called_once()
 
 class X86SinglethreadTestCase(X86ParseTestCase):
     @classmethod

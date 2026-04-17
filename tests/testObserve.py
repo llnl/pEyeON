@@ -6,6 +6,7 @@ from glob import glob
 import datetime as dt
 
 import json
+from unittest.mock import patch
 
 from eyeon import observe
 

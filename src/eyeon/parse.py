@@ -2,6 +2,7 @@ from alive_progress import alive_bar, alive_it
 from typing import Any
 
 import datetime
+import hashlib
 import json
 from importlib.metadata import version
 from loguru import logger
@@ -29,6 +30,18 @@ class Parse:
     def __init__(self, dirpath: str) -> None:
         self.path = dirpath
 
+    @staticmethod
+    def _create_hash(file: str, algorithm: str) -> str:
+        hashers = {
+            "md5": hashlib.md5,
+            "sha1": hashlib.sha1,
+            "sha256": hashlib.sha256,
+        }
+        with open(file, "rb") as f:
+            h = hashers[algorithm]()
+            h.update(f.read())
+            return h.hexdigest()
+
     def _write_error_json(self, file: str, result_path: str, message: str) -> None:
         stat = os.stat(file)
         observation = {
@@ -38,6 +51,7 @@ class Parse:
             "filetype": [],
             "metadata": {
                 "error": {
+                    "type": "metadata",
                     "message": message,
                 }
             },
@@ -47,9 +61,9 @@ class Parse:
             ).strftime("%Y-%m-%d %H:%M:%S"),
             "observation_ts": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "permissions": oct(stat.st_mode),
-            "md5": Observe.create_hash(file, "md5"),
-            "sha1": Observe.create_hash(file, "sha1"),
-            "sha256": Observe.create_hash(file, "sha256"),
+            "md5": self._create_hash(file, "md5"),
+            "sha1": self._create_hash(file, "sha1"),
+            "sha256": self._create_hash(file, "sha256"),
             "signatures": [],
             "eyeon_version": version("peyeon"),
         }

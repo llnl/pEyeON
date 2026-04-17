@@ -142,7 +142,7 @@ class CommandLine:
         compression_parser.set_defaults(func=self.compress_file)
 
         # new
-        if testargs:
+        if testargs is not None:
             self.args = parser.parse_args(testargs)
         else:
             self.args = parser.parse_args()
