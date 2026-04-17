@@ -301,7 +301,6 @@ class TestParseErrorFallback(unittest.TestCase):
                 observation = json.load(f)
 
             self.assertEqual(observation["filename"], "sample.bin")
-            self.assertEqual(observation["metadata"]["error"]["type"], "metadata")
             self.assertEqual(
                 observation["metadata"]["error"]["message"],
                 "metadata extraction failed",

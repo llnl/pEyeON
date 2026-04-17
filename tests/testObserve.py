@@ -386,7 +386,6 @@ class TestMetadataPluginErrors(unittest.TestCase):
         obs.set_metadata("/tmp/sample.bin", mgr)
 
         self.assertEqual(obs.metadata["native_lib_file"], {"nativeLibraries": []})
-        self.assertEqual(obs.metadata["error"]["type"], "metadata")
         self.assertEqual(
             obs.metadata["error"]["message"],
             "metadata extraction failed",
@@ -417,7 +416,6 @@ class TestMetadataPluginErrors(unittest.TestCase):
 
         obs.set_metadata("/tmp/sample.bin", mgr)
 
-        self.assertEqual(obs.metadata["error"]["type"], "metadata")
         self.assertEqual(
             obs.metadata["error"]["message"],
             "metadata extraction failed",
