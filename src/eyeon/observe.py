@@ -373,6 +373,7 @@ class Observe:
         logger.debug(f"trying surfactant for {file}")
 
         self.metadata={}
+        plugin_errors = []
 
         hooks=mgr.hook.extract_file_info.get_hookimpls()
 
@@ -392,8 +393,14 @@ class Observe:
             try:
                 result=plugin.function(**filtered_kwargs)
             except Exception as e:
+                plugin_errors.append(
+                    {
+                        "plugin": plugin_name,
+                        "message": str(e),
+                    }
+                )
                 # Log plugin failure but continue with other plugins
-                logger.exception(
+                logger.error(
                     f"Fail - Plugin {plugin_name} failed on file {file}: {e}"
                 )
                 continue
@@ -413,13 +420,27 @@ class Observe:
             self.metadata[plugin_name] = result
 
         if not self.metadata:
-            logger.debug(f"No plugin produced metadata for {file}, using Unknown fallback")
-            self.metadata = {
-                "Unknown": {
-                    "description": "some other file not in"
-                    "{a.out, coff, docker image, elf, java, "
-                    "js, mach-o, native lib, ole, pe, rpm, uboot image}"
+            if plugin_errors:
+                logger.debug(f"No plugin produced metadata for {file}, using error fallback")
+                self.metadata = {
+                    "error": {
+                        "type": "metadata",
+                        "message": plugin_errors[0]["message"],
+                    }
                 }
+            else:
+                logger.debug(f"No plugin produced metadata for {file}, using Unknown fallback")
+                self.metadata = {
+                    "Unknown": {
+                        "description": "some other file not in"
+                        "{a.out, coff, docker image, elf, java, "
+                        "js, mach-o, native lib, ole, pe, rpm, uboot image}"
+                    }
+                }
+        elif plugin_errors:
+            self.metadata["error"] = {
+                "type": "metadata",
+                "message": plugin_errors[0]["message"],
             }
 
     def _safe_serialize(self, obj) -> str:

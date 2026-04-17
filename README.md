@@ -202,6 +202,15 @@ Examples:
 
 If `DATASET_PATH` is not provided, the wrapper uses `datasets.dataset_path` from `EyeOnData.toml`. If that is also unset, it falls back to `$HOME/data/eyeon`.
 
+#### Latest Batch Summary
+`eyeon-latest-batch-summary.sh` prints a short summary for the newest parse batch directory, including total file count, top-level JSON count, and counts by metadata type.
+
+```bash
+./eyeon-latest-batch-summary.sh
+./eyeon-latest-batch-summary.sh /data/eyeon
+./eyeon-latest-batch-summary.sh /data/eyeon/20260417T120000Z_TESTSITE
+```
+
 #### Container Image Selection
 By default the wrapper uses the published production image:
 

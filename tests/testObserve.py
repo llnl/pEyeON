@@ -1,5 +1,6 @@
 import os
 import unittest
+from types import SimpleNamespace
 
 from glob import glob
 import datetime as dt
@@ -341,6 +342,86 @@ class TestFilePermissions(unittest.TestCase):
 class TestFolderPermissions(unittest.TestCase):
     def test_nonreadable_folder(self):
         self.assertRaises(PermissionError, observe.Observe, "/root")
+
+
+class TestMetadataPluginErrors(unittest.TestCase):
+    def _make_plugin(self, plugin_name, argnames, function):
+        return SimpleNamespace(
+            plugin_name=plugin_name,
+            argnames=argnames,
+            function=function,
+        )
+
+    @patch("eyeon.observe.logger")
+    def test_set_metadata_keeps_success_and_records_error(self, mock_logger):
+        obs = observe.Observe.__new__(observe.Observe)
+        obs.filetype = ["ELF"]
+
+        def fail_plugin(**_kwargs):
+            raise RuntimeError("metadata extraction failed")
+
+        def ok_plugin(**_kwargs):
+            return {"nativeLibraries": []}
+
+        mgr = SimpleNamespace(
+            hook=SimpleNamespace(
+                extract_file_info=SimpleNamespace(
+                    get_hookimpls=lambda: [
+                        self._make_plugin(
+                            "surfactant.infoextractors.elf_file",
+                            ["filename", "filetype"],
+                            fail_plugin,
+                        ),
+                        self._make_plugin(
+                            "surfactant.infoextractors.native_lib_file",
+                            ["filename", "filetype"],
+                            ok_plugin,
+                        ),
+                    ]
+                )
+            )
+        )
+
+        obs.set_metadata("/tmp/sample.bin", mgr)
+
+        self.assertEqual(obs.metadata["native_lib_file"], {"nativeLibraries": []})
+        self.assertEqual(obs.metadata["error"]["type"], "metadata")
+        self.assertEqual(
+            obs.metadata["error"]["message"],
+            "metadata extraction failed",
+        )
+        mock_logger.error.assert_called_once()
+
+    @patch("eyeon.observe.logger")
+    def test_set_metadata_uses_error_fallback_when_all_plugins_fail(self, mock_logger):
+        obs = observe.Observe.__new__(observe.Observe)
+        obs.filetype = ["ELF"]
+
+        def fail_plugin(**_kwargs):
+            raise RuntimeError("metadata extraction failed")
+
+        mgr = SimpleNamespace(
+            hook=SimpleNamespace(
+                extract_file_info=SimpleNamespace(
+                    get_hookimpls=lambda: [
+                        self._make_plugin(
+                            "surfactant.infoextractors.elf_file",
+                            ["filename", "filetype"],
+                            fail_plugin,
+                        )
+                    ]
+                )
+            )
+        )
+
+        obs.set_metadata("/tmp/sample.bin", mgr)
+
+        self.assertEqual(obs.metadata["error"]["type"], "metadata")
+        self.assertEqual(
+            obs.metadata["error"]["message"],
+            "metadata extraction failed",
+        )
+        mock_logger.error.assert_called_once()
 
 
 with open("schema/observation.schema.json") as schem:
