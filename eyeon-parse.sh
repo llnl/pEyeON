@@ -134,7 +134,7 @@ resolve_runtime() {
   exit 2
 }
 
-IMAGE="${EYEON_IMAGE:-ghcr.io/llnl/peyeon-dev:dev}"
+IMAGE="${EYEON_IMAGE:-ghcr.io/llnl/peyeon:latest}"
 DATASET_PATH="${EYEON_DATASET_PATH:-}"
 UTIL_CD="${EYEON_UTIL_CD:-}"
 SOURCE="${EYEON_SOURCE:-}"

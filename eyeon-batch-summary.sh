@@ -34,9 +34,12 @@ Usage: $(basename "$0") [BATCH_DIR|DATASET_PATH ...]
 Without an argument, the script resolves the dataset root the same way as eyeon-parse.sh,
 finds the newest batch directory, and prints a short summary.
 
-If arguments are provided, each one is summarized in order:
+If one argument is provided:
   - a batch directory is summarized directly
   - otherwise the argument is treated as a dataset root and the newest batch is summarized
+
+If multiple arguments are provided, each is treated as an explicit batch directory
+and summarized in order. This supports shell globs like /data/eyeon/*string*.
 EOF
 }
 
@@ -65,30 +68,21 @@ has_top_level_json() {
 is_batch_name() {
   local dir="$1"
   local base="${dir##*/}"
-  [[ "$base" =~ ^[0-9]{8}T[0-9]{6}Z_.+ ]];
-}
-
-has_batch_children() {
-  local dataset_root="$1"
-
-  shopt -s nullglob
-  local dirs=("$dataset_root"/*/)
-  shopt -u nullglob
-
-  local dir
-  for dir in "${dirs[@]}"; do
-    if is_batch_name "${dir%/}"; then
+  case "$base" in
+    [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]T[0-9][0-9][0-9][0-9][0-9][0-9]Z_*)
       return 0
-    fi
-  done
-
-  return 1
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 latest_batch_dir() {
   local dataset_root="$1"
   local latest_dir=""
   local latest_name=""
+  local saw_batch_dir=0
 
   shopt -s nullglob
   local dirs=("$dataset_root"/*/)
@@ -103,6 +97,14 @@ latest_batch_dir() {
       continue
     fi
 
+    saw_batch_dir=1
+
+    # Skip unreadable/unsearchable batch directories instead of selecting
+    # them and then failing during summary.
+    if [[ ! -r "$dir" || ! -x "$dir" ]]; then
+      continue
+    fi
+
     if [[ -z "$latest_name" || "$base" > "$latest_name" ]]; then
       latest_name="$base"
       latest_dir="${dir%/}"
@@ -110,6 +112,10 @@ latest_batch_dir() {
   done
 
   if [[ -z "$latest_dir" ]]; then
+    if [[ "$saw_batch_dir" -eq 1 ]]; then
+      echo "No readable batch directories found under: $dataset_root" >&2
+      return 2
+    fi
     return 1
   fi
 
@@ -156,17 +162,17 @@ resolve_batch_dir() {
     exit 2
   fi
 
-  if has_top_level_json "$target"; then
+  if is_batch_name "$target"; then
     batch_dir="$target"
-  elif is_batch_name "$target"; then
-    batch_dir="$target"
-  elif has_batch_children "$target"; then
-    if ! batch_dir="$(latest_batch_dir "$target")"; then
+  else
+    if batch_dir="$(latest_batch_dir "$target")"; then
+      :
+    elif has_top_level_json "$target"; then
+      batch_dir="$target"
+    else
       echo "No batch directories found under: $target" >&2
       exit 2
     fi
-  else
-    batch_dir="$target"
   fi
 
   printf '%s\n' "$batch_dir"
@@ -177,10 +183,20 @@ if [[ $# -eq 0 ]]; then
   exit 0
 fi
 
+if [[ $# -eq 1 ]]; then
+  summarize_batch_dir "$(resolve_batch_dir "$1")"
+  exit 0
+fi
+
 arg_index=0
 for target in "$@"; do
   arg_index=$((arg_index + 1))
-  summarize_batch_dir "$(resolve_batch_dir "$target")"
+  if [[ ! -d "$target" ]]; then
+    echo "Directory does not exist: $target" >&2
+    exit 2
+  fi
+
+  summarize_batch_dir "$target"
   if [[ "$arg_index" -lt "$#" ]]; then
     printf '\n'
   fi

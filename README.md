@@ -9,6 +9,30 @@ EyeON is a CLI tool that allows users to get software data pertaining to their m
 <p align="center">
 <img src="Photo/EyeON_Mascot.png" width="300" height="270">
 
+## Quickstart
+
+For normal field use, you do not need to clone this repository. Download the two wrapper scripts, pull the published container image, run a batch parse, and then summarize the newest batch.
+
+```bash
+curl -O https://raw.githubusercontent.com/LLNL/pEyeON/main/eyeon-parse.sh
+curl -O https://raw.githubusercontent.com/LLNL/pEyeON/main/eyeon-batch-summary.sh
+chmod +x eyeon-parse.sh eyeon-batch-summary.sh
+
+docker pull ghcr.io/llnl/peyeon:latest
+
+mkdir -p "$HOME/data/eyeon"
+./eyeon-parse.sh TESTSITE /path/to/software "$HOME/data/eyeon"
+./eyeon-batch-summary.sh
+```
+
+Notes:
+
+- `TESTSITE` is your site or utility identifier and becomes part of the batch directory name.
+- `/path/to/software` should point to the directory you want to scan.
+- If you omit the dataset path, `eyeon-parse.sh` uses `datasets.dataset_path` from `EyeOnData.toml` when present, otherwise `$HOME/data/eyeon`.
+
+For deeper analysis of collected metadata, see the companion project [pEyeON-Analytics](https://github.com/LLNL/pEyeON-Analytics).
+
 ## Motivation
 
 Validation is important when installing new software. Existing tools use a hash/signature check to validate that the software has not been tampered. Knowing that the software works as intended saves a lot of time and energy, but just performing these hash/signature checks doesn't provide all the information needed to understand supply chain threats. 
@@ -27,6 +51,8 @@ However, this does not install several key dependencies, namely `libmagic`, `ssd
 
 ### Containers
 The container images include the main extraction dependencies such as `ssdeep`, `libmagic`, `tlsh`, and `detect-it-easy`.
+
+For most users, the recommended container workflow is `eyeon-parse.sh` plus `eyeon-batch-summary.sh` from the quickstart above. The direct `docker run` and `podman run` examples below are mainly useful for development, debugging, and image validation.
 
 #### Published Multi-Arch Image
 The primary container image is published to GHCR as a multi-arch image. The same tag works on both `amd64` and `arm64` hosts, and Docker will pull the matching architecture automatically.
@@ -54,8 +80,6 @@ docker run --rm -it -v "$(pwd):/workdir:Z" peyeon /bin/bash
 podman build -t peyeon -f builds/podman.Dockerfile .
 podman run --rm -it -v "$(pwd):/workdir:rw" peyeon /bin/bash
 ```
-
-These direct `docker run` and `podman run` examples are intended for interactive development shells and demos. The primary compute-oriented container workflow is `eyeon-parse.sh`, documented in its own section below.
 
 ### VM Install
 Alternatively, to install on a clean Ubuntu or RHEL8/9 VM:
@@ -106,67 +130,7 @@ To request other options for install, please create an issue on our GitHub page.
 
 ## Usage
 
-This section shows how to run the CLI component. 
-
-1. Displays all arguments 
-```bash
-eyeon --help
-```
-
-2. Displays observe arguments 
-```bash
-eyeon observe --help
-```
-
-3. Displays parse arguments 
-```bash
-eyeon parse --help
-```
-
-EyeON consists of two parts - an observe call and a parse call. `observe.py` works on a single file to return a suite of identifying metrics, whereas `parse.py` expects a folder. Both of these can be run either from a library import or a CLI command.
-
-#### Observe
-
-1. This CLI command calls the `observe` function and makes an observation of a file. 
-
-CLI command:
-
-```bash
-eyeon observe demo.ipynb
-```
-
-Init file calls observe function in `observe.py`
-
-```bash
-obs = eyeon.observe.Observe("demo.ipynb")
-```
-The observation will create a json file containing unique identifying information such as hashes, modify date, certificate info, etc.
-
-Example json file:
-
-```json
-{
-    "bytecount": 9381, 
-    "filename": "demo.ipynb", 
-    "signatures": {"valid": "N/A"}, 
-    "imphash": "N/A", 
-    "magic": "JSON text data", 
-    "modtime": "2023-11-03 20:21:20", 
-    "observation_ts": "2024-01-17 09:16:48", 
-    "permissions": "0o100644", 
-    "md5": "34e11a35c91d57ac249ff1300055a816", 
-    "sha1": "9388f99f2c05e6e36b279dc2453ebea4bdc83242", 
-    "sha256": "fa95b3820d4ee30a635982bf9b02a467e738deaebd0db1ff6a262623d762f60d", 
-    "ssdeep": "96:Ui7ooWT+sPmRBeco20zV32G0r/R4jUkv57nPBSujJfcMZC606/StUbm/lGMipUQy:U/pdratRqJ3ZHStx4UA+I1jS"
-}
-```
-
-#### Parse
-`parse.py` calls `observe` recursively, returning an observation for each file in a directory. 
-
-```bash
-obs = eyeon.parse.Parse(args.dir)
-```
+This section starts with the recommended batch workflow for normal users. Lower-level `eyeon` CLI usage follows after that for development and direct library/CLI use.
 
 ### eyeon-parse.sh
 `eyeon-parse.sh` is the primary container wrapper for batch parsing. It treats the container as compute only:
@@ -203,12 +167,18 @@ Examples:
 If `DATASET_PATH` is not provided, the wrapper uses `datasets.dataset_path` from `EyeOnData.toml`. If that is also unset, it falls back to `$HOME/data/eyeon`.
 
 #### Latest Batch Summary
-`eyeon-latest-batch-summary.sh` prints a short summary for the newest parse batch directory, including total file count, top-level JSON count, and counts by metadata type.
+`eyeon-batch-summary.sh` prints a short summary for the newest parse batch directory, including total file count, top-level JSON count, and counts by metadata type.
 
 ```bash
-./eyeon-latest-batch-summary.sh
-./eyeon-latest-batch-summary.sh /data/eyeon
-./eyeon-latest-batch-summary.sh /data/eyeon/20260417T120000Z_TESTSITE
+./eyeon-batch-summary.sh
+./eyeon-batch-summary.sh /data/eyeon
+./eyeon-batch-summary.sh /data/eyeon/20260417T120000Z_TESTSITE
+```
+
+To summarize multiple explicit batch directories in one call, pass them all on the command line. This is useful with shell globs:
+
+```bash
+./eyeon-batch-summary.sh /data/eyeon/*TESTSITE*
 ```
 
 #### Container Image Selection
@@ -304,6 +274,69 @@ Inside the debug shell, the intended parse command is written to `/tmp/eyeon-deb
 ```bash
 cat /tmp/eyeon-debug-command.sh
 /tmp/eyeon-debug-command.sh
+```
+
+### Core CLI
+
+These commands are still available when you install the Python package directly or when working interactively inside the container.
+
+1. Displays all arguments
+```bash
+eyeon --help
+```
+
+2. Displays observe arguments
+```bash
+eyeon observe --help
+```
+
+3. Displays parse arguments
+```bash
+eyeon parse --help
+```
+
+EyeON consists of two parts: an observe call and a parse call. `observe.py` works on a single file to return a suite of identifying metrics, whereas `parse.py` expects a folder. Both can be run either from a library import or a CLI command.
+
+#### Observe
+
+CLI command:
+
+```bash
+eyeon observe demo.ipynb
+```
+
+Library usage:
+
+```python
+obs = eyeon.observe.Observe("demo.ipynb")
+```
+
+The observation will create a JSON file containing identifying information such as hashes, modify date, certificate info, and other metadata.
+
+Example JSON file:
+
+```json
+{
+    "bytecount": 9381,
+    "filename": "demo.ipynb",
+    "signatures": {"valid": "N/A"},
+    "imphash": "N/A",
+    "magic": "JSON text data",
+    "modtime": "2023-11-03 20:21:20",
+    "observation_ts": "2024-01-17 09:16:48",
+    "permissions": "0o100644",
+    "md5": "34e11a35c91d57ac249ff1300055a816",
+    "sha1": "9388f99f2c05e6e36b279dc2453ebea4bdc83242",
+    "sha256": "fa95b3820d4ee30a635982bf9b02a467e738deaebd0db1ff6a262623d762f60d",
+    "ssdeep": "96:Ui7ooWT+sPmRBeco20zV32G0r/R4jUkv57nPBSujJfcMZC606/StUbm/lGMipUQy:U/pdratRqJ3ZHStx4UA+I1jS"
+}
+```
+
+#### Parse
+`parse.py` calls `observe` recursively, returning an observation for each file in a directory.
+
+```python
+obs = eyeon.parse.Parse(args.dir)
 ```
 
 #### Checksum Check

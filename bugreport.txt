@@ -1,0 +1,300 @@
+ml-5617218:pEyeON johnson30$ ./eyeon-parse.sh visualvm_144 ~/apps/visualvm_144/ 4
+DATASET_PATH defaulting to /Users/johnson30/data/eyeon. To override, set datasets.dataset_path in EyeOnData.toml, EYEON_DATASET_PATH, or --dataset-path.
+399 files collected
+/eye/lib/python3.13/site-packages/surfactant/database_manager/database_utils.py:153: FutureWarning: Possible nested set at position 81
+  self.load_db()
+/eye/lib/python3.13/site-packages/surfactant/database_manager/database_utils.py:153: FutureWarning: Possible nested set at position 81
+  self.load_db()
+/eye/lib/python3.13/site-packages/surfactant/database_manager/database_utils.py:153: FutureWarning: Possible nested set at position 81
+  self.load_db()
+/eye/lib/python3.13/site-packages/surfactant/database_manager/database_utils.py:153: FutureWarning: Possible nested set at position 81
+  self.load_db()
+2026-04-17 16:14:38,424763 - eyeon.observe - ERROR - Fail - Plugin elf_file failed on file /source/profiler/lib/deployed/jdk16/hpux-pa_risc2.0w/libprofilerinterface.sl: Section points at section 0 of type SHT_NULL, expected SHT_SYMTAB/SHT_DYNSYM
+Traceback (most recent call last):
+
+  File "/eye/bin/eyeon", line 6, in <module>
+    sys.exit(main())
+    │   │    └ <function main at 0xffffb7a411c0>
+    │   └ <bound method ExitHooks.exit of <surfactant.utils.exit_hook.ExitHooks object at 0xffff9d973770>>
+    └ <module 'sys' (built-in)>
+  File "/eye/lib/python3.13/site-packages/eyeon/cli/__init__.py", line 260, in main
+    cli.args.func(cli.args)
+    │   │    │    │   └ Namespace(database=None, output_dir='/workdir/20260417T161435Z_visualvm_144', log_file=None, log_level='ERROR', dir='/source'...
+    │   │    │    └ <eyeon.cli.CommandLine object at 0xffff91692cf0>
+    │   │    └ <bound method CommandLine.parse of <eyeon.cli.CommandLine object at 0xffff91692cf0>>
+    │   └ Namespace(database=None, output_dir='/workdir/20260417T161435Z_visualvm_144', log_file=None, log_level='ERROR', dir='/source'...
+    └ <eyeon.cli.CommandLine object at 0xffff91692cf0>
+  File "/eye/lib/python3.13/site-packages/eyeon/cli/__init__.py", line 216, in parse
+    p(result_path=outdir, threads=args.threads)
+    │             │               │    └ 4
+    │             │               └ Namespace(database=None, output_dir='/workdir/20260417T161435Z_visualvm_144', log_file=None, log_level='ERROR', dir='/source'...
+    │             └ '/workdir/20260417T161435Z_visualvm_144'
+    └ <eyeon.parse.Parse object at 0xffff91692e40>
+  File "/eye/lib/python3.13/site-packages/eyeon/parse.py", line 112, in __call__
+    with Pool(threads) as p:
+         │    └ 4
+         └ <bound method BaseContext.Pool of <multiprocessing.context.DefaultContext object at 0xffffafcf1400>>
+  File "/usr/local/lib/python3.13/multiprocessing/context.py", line 119, in Pool
+    return Pool(processes, initializer, initargs, maxtasksperchild,
+           │    │          │            │         └ None
+           │    │          │            └ ()
+           │    │          └ None
+           │    └ 4
+           └ <class 'multiprocessing.pool.Pool'>
+  File "/usr/local/lib/python3.13/multiprocessing/pool.py", line 215, in __init__
+    self._repopulate_pool()
+    │    └ <function Pool._repopulate_pool at 0xffff910fcfe0>
+    └ <multiprocessing.pool.Pool state=INIT pool_size=0>
+  File "/usr/local/lib/python3.13/multiprocessing/pool.py", line 306, in _repopulate_pool
+    return self._repopulate_pool_static(self._ctx, self.Process,
+           │    │                       │    │     │    └ <staticmethod(<function Pool.Process at 0xffff910fcb80>)>
+           │    │                       │    │     └ <multiprocessing.pool.Pool state=INIT pool_size=0>
+           │    │                       │    └ <multiprocessing.context.ForkContext object at 0xffffafcf01a0>
+           │    │                       └ <multiprocessing.pool.Pool state=INIT pool_size=0>
+           │    └ <staticmethod(<function Pool._repopulate_pool_static at 0xffff910fd080>)>
+           └ <multiprocessing.pool.Pool state=INIT pool_size=0>
+  File "/usr/local/lib/python3.13/multiprocessing/pool.py", line 329, in _repopulate_pool_static
+    w.start()
+    │ └ <function BaseProcess.start at 0xffffafcd7ce0>
+    └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+  File "/usr/local/lib/python3.13/multiprocessing/process.py", line 121, in start
+    self._popen = self._Popen(self)
+    │    │        │    │      └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+    │    │        │    └ <staticmethod(<function ForkProcess._Popen at 0xffffafd52c00>)>
+    │    │        └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+    │    └ None
+    └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+  File "/usr/local/lib/python3.13/multiprocessing/context.py", line 288, in _Popen
+    return Popen(process_obj)
+           │     └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+           └ <class 'multiprocessing.popen_fork.Popen'>
+  File "/usr/local/lib/python3.13/multiprocessing/popen_fork.py", line 20, in __init__
+    self._launch(process_obj)
+    │    │       └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+    │    └ <function Popen._launch at 0xffff9114a8e0>
+    └ <multiprocessing.popen_fork.Popen object at 0xffff912eb9d0>
+  File "/usr/local/lib/python3.13/multiprocessing/popen_fork.py", line 74, in _launch
+    code = process_obj._bootstrap(parent_sentinel=child_r)
+           │           │                          └ 14
+           │           └ <function BaseProcess._bootstrap at 0xffffafcf8720>
+           └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+  File "/usr/local/lib/python3.13/multiprocessing/process.py", line 313, in _bootstrap
+    self.run()
+    │    └ <function BaseProcess.run at 0xffffafcd7c40>
+    └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+  File "/usr/local/lib/python3.13/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+    │    │        │    │        │    └ {}
+    │    │        │    │        └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+    │    │        │    └ (<multiprocessing.queues.SimpleQueue object at 0xffff9146a900>, <multiprocessing.queues.SimpleQueue object at 0xffff912eb4d0>...
+    │    │        └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+    │    └ <function worker at 0xffff910fc680>
+    └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+  File "/usr/local/lib/python3.13/multiprocessing/pool.py", line 125, in worker
+    result = (True, func(*args, **kwds))
+                    │     │       └ {}
+                    │     └ (('/source/profiler/lib/deployed/jdk16/hpux-pa_risc2.0w/libprofilerinterface.sl', '/workdir/20260417T161435Z_visualvm_144', <...
+                    └ <bound method Parse._observe_worker of <eyeon.parse.Parse object at 0xffff8b5b07d0>>
+  File "/eye/lib/python3.13/site-packages/eyeon/parse.py", line 57, in _observe_worker
+    self._observe((file, result_path))
+    │    │         │     └ '/workdir/20260417T161435Z_visualvm_144'
+    │    │         └ '/source/profiler/lib/deployed/jdk16/hpux-pa_risc2.0w/libprofilerinterface.sl'
+    │    └ <function Parse._observe at 0xffffaec80900>
+    └ <eyeon.parse.Parse object at 0xffff8b5b07d0>
+  File "/eye/lib/python3.13/site-packages/eyeon/parse.py", line 31, in _observe
+    o = Observe(file)
+        │       └ '/source/profiler/lib/deployed/jdk16/hpux-pa_risc2.0w/libprofilerinterface.sl'
+        └ <class 'eyeon.observe.Observe'>
+  File "/eye/lib/python3.13/site-packages/eyeon/observe.py", line 110, in __init__
+    self.set_metadata(file, mgr)
+    │    │            │     └ <pluggy._manager.PluginManager object at 0xffff88d82cd0>
+    │    │            └ '/source/profiler/lib/deployed/jdk16/hpux-pa_risc2.0w/libprofilerinterface.sl'
+    │    └ <function Observe.set_metadata at 0xffffaec802c0>
+    └ <eyeon.observe.Observe object at 0xffff8b507e70>
+> File "/eye/lib/python3.13/site-packages/eyeon/observe.py", line 393, in set_metadata
+    result=plugin.function(**filtered_kwargs)
+           │      │          └ {'sbom': None, 'software': Software(UUID='be2253ee-d2d2-4e27-8b22-05d2bf6171cc', name=None, size=None, fileName=None, install...
+           │      └ <member 'function' of 'HookImpl' objects>
+           └ <HookImpl plugin_name='surfactant.infoextractors.elf_file', plugin=<module 'surfactant.infoextractors.elf_file' from '/eye/li...
+  File "/eye/lib/python3.13/site-packages/surfactant/infoextractors/elf_file.py", line 27, in extract_file_info
+    return extract_elf_info(filename)
+           │                └ '/source/profiler/lib/deployed/jdk16/hpux-pa_risc2.0w/libprofilerinterface.sl'
+           └ <function extract_elf_info at 0xffff9d90fc40>
+  File "/eye/lib/python3.13/site-packages/surfactant/infoextractors/elf_file.py", line 84, in extract_elf_info
+    for section in elf.iter_sections():
+        │          │   └ <function ELFFile.iter_sections at 0xffff9d9f7420>
+        │          └ <elftools.elf.elffile.ELFFile object at 0xffff8b52fbd0>
+        └ <elftools.elf.sections.StringTableSection object at 0xffff88e816d0>
+  File "/eye/lib/python3.13/site-packages/elftools/elf/elffile.py", line 201, in iter_sections
+    section = self.get_section(i)
+              │    │           └ 4
+              │    └ <function ELFFile.get_section at 0xffff9d9f7060>
+              └ <elftools.elf.elffile.ELFFile object at 0xffff8b52fbd0>
+  File "/eye/lib/python3.13/site-packages/elftools/elf/elffile.py", line 141, in get_section
+    return self._make_section(section_header)
+           │    │             └ Container({'sh_name': 26, 'sh_type': 'SHT_HASH', 'sh_flags': 2, 'sh_addr': 4611686018427395120, 'sh_offset': 7216, 'sh_size':...
+           │    └ <function ELFFile._make_section at 0xffff9d808180>
+           └ <elftools.elf.elffile.ELFFile object at 0xffff8b52fbd0>
+  File "/eye/lib/python3.13/site-packages/elftools/elf/elffile.py", line 736, in _make_section
+    return self._make_elf_hash_section(section_header, name)
+           │    │                      │               └ '.hash'
+           │    │                      └ Container({'sh_name': 26, 'sh_type': 'SHT_HASH', 'sh_flags': 2, 'sh_addr': 4611686018427395120, 'sh_offset': 7216, 'sh_size':...
+           │    └ <function ELFFile._make_elf_hash_section at 0xffff9d808680>
+           └ <elftools.elf.elffile.ELFFile object at 0xffff8b52fbd0>
+  File "/eye/lib/python3.13/site-packages/elftools/elf/elffile.py", line 809, in _make_elf_hash_section
+    symtab_section = self._get_linked_symtab_section(linked_symtab_index)
+                     │    │                          └ 0
+                     │    └ <function ELFFile._get_linked_symtab_section at 0xffff9d9f7100>
+                     └ <elftools.elf.elffile.ELFFile object at 0xffff8b52fbd0>
+  File "/eye/lib/python3.13/site-packages/elftools/elf/elffile.py", line 150, in _get_linked_symtab_section
+    raise ELFError("Section points at section %d of type %s, expected SHT_SYMTAB/SHT_DYNSYM" % (n, section_header['sh_type']))
+          │                                                                                     │  └ Container({'sh_name': 0, 'sh_type': 'SHT_NULL', 'sh_flags': 0, 'sh_addr': 0, 'sh_offset': 0, 'sh_size': 0, 'sh_link': 0, 'sh_...
+          │                                                                                     └ 0
+          └ <class 'elftools.common.exceptions.ELFError'>
+
+elftools.common.exceptions.ELFError: Section points at section 0 of type SHT_NULL, expected SHT_SYMTAB/SHT_DYNSYM
+2026-04-17 16:14:38,484377 - eyeon.observe - ERROR - Fail - Plugin elf_file failed on file /source/profiler/lib/deployed/jdk15/hpux-pa_risc2.0w/libprofilerinterface.sl: Section points at section 0 of type SHT_NULL, expected SHT_SYMTAB/SHT_DYNSYM
+Traceback (most recent call last):
+
+  File "/eye/bin/eyeon", line 6, in <module>
+    sys.exit(main())
+    │   │    └ <function main at 0xffffb7a411c0>
+    │   └ <bound method ExitHooks.exit of <surfactant.utils.exit_hook.ExitHooks object at 0xffff9d973770>>
+    └ <module 'sys' (built-in)>
+  File "/eye/lib/python3.13/site-packages/eyeon/cli/__init__.py", line 260, in main
+    cli.args.func(cli.args)
+    │   │    │    │   └ Namespace(database=None, output_dir='/workdir/20260417T161435Z_visualvm_144', log_file=None, log_level='ERROR', dir='/source'...
+    │   │    │    └ <eyeon.cli.CommandLine object at 0xffff91692cf0>
+    │   │    └ <bound method CommandLine.parse of <eyeon.cli.CommandLine object at 0xffff91692cf0>>
+    │   └ Namespace(database=None, output_dir='/workdir/20260417T161435Z_visualvm_144', log_file=None, log_level='ERROR', dir='/source'...
+    └ <eyeon.cli.CommandLine object at 0xffff91692cf0>
+  File "/eye/lib/python3.13/site-packages/eyeon/cli/__init__.py", line 216, in parse
+    p(result_path=outdir, threads=args.threads)
+    │             │               │    └ 4
+    │             │               └ Namespace(database=None, output_dir='/workdir/20260417T161435Z_visualvm_144', log_file=None, log_level='ERROR', dir='/source'...
+    │             └ '/workdir/20260417T161435Z_visualvm_144'
+    └ <eyeon.parse.Parse object at 0xffff91692e40>
+  File "/eye/lib/python3.13/site-packages/eyeon/parse.py", line 112, in __call__
+    with Pool(threads) as p:
+         │    └ 4
+         └ <bound method BaseContext.Pool of <multiprocessing.context.DefaultContext object at 0xffffafcf1400>>
+  File "/usr/local/lib/python3.13/multiprocessing/context.py", line 119, in Pool
+    return Pool(processes, initializer, initargs, maxtasksperchild,
+           │    │          │            │         └ None
+           │    │          │            └ ()
+           │    │          └ None
+           │    └ 4
+           └ <class 'multiprocessing.pool.Pool'>
+  File "/usr/local/lib/python3.13/multiprocessing/pool.py", line 215, in __init__
+    self._repopulate_pool()
+    │    └ <function Pool._repopulate_pool at 0xffff910fcfe0>
+    └ <multiprocessing.pool.Pool state=INIT pool_size=0>
+  File "/usr/local/lib/python3.13/multiprocessing/pool.py", line 306, in _repopulate_pool
+    return self._repopulate_pool_static(self._ctx, self.Process,
+           │    │                       │    │     │    └ <staticmethod(<function Pool.Process at 0xffff910fcb80>)>
+           │    │                       │    │     └ <multiprocessing.pool.Pool state=INIT pool_size=0>
+           │    │                       │    └ <multiprocessing.context.ForkContext object at 0xffffafcf01a0>
+           │    │                       └ <multiprocessing.pool.Pool state=INIT pool_size=0>
+           │    └ <staticmethod(<function Pool._repopulate_pool_static at 0xffff910fd080>)>
+           └ <multiprocessing.pool.Pool state=INIT pool_size=0>
+  File "/usr/local/lib/python3.13/multiprocessing/pool.py", line 329, in _repopulate_pool_static
+    w.start()
+    │ └ <function BaseProcess.start at 0xffffafcd7ce0>
+    └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+  File "/usr/local/lib/python3.13/multiprocessing/process.py", line 121, in start
+    self._popen = self._Popen(self)
+    │    │        │    │      └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+    │    │        │    └ <staticmethod(<function ForkProcess._Popen at 0xffffafd52c00>)>
+    │    │        └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+    │    └ None
+    └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+  File "/usr/local/lib/python3.13/multiprocessing/context.py", line 288, in _Popen
+    return Popen(process_obj)
+           │     └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+           └ <class 'multiprocessing.popen_fork.Popen'>
+  File "/usr/local/lib/python3.13/multiprocessing/popen_fork.py", line 20, in __init__
+    self._launch(process_obj)
+    │    │       └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+    │    └ <function Popen._launch at 0xffff9114a8e0>
+    └ <multiprocessing.popen_fork.Popen object at 0xffff912eb9d0>
+  File "/usr/local/lib/python3.13/multiprocessing/popen_fork.py", line 74, in _launch
+    code = process_obj._bootstrap(parent_sentinel=child_r)
+           │           │                          └ 14
+           │           └ <function BaseProcess._bootstrap at 0xffffafcf8720>
+           └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+  File "/usr/local/lib/python3.13/multiprocessing/process.py", line 313, in _bootstrap
+    self.run()
+    │    └ <function BaseProcess.run at 0xffffafcd7c40>
+    └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+  File "/usr/local/lib/python3.13/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+    │    │        │    │        │    └ {}
+    │    │        │    │        └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+    │    │        │    └ (<multiprocessing.queues.SimpleQueue object at 0xffff9146a900>, <multiprocessing.queues.SimpleQueue object at 0xffff912eb4d0>...
+    │    │        └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+    │    └ <function worker at 0xffff910fc680>
+    └ <ForkProcess name='ForkPoolWorker-2' parent=1 started daemon>
+  File "/usr/local/lib/python3.13/multiprocessing/pool.py", line 125, in worker
+    result = (True, func(*args, **kwds))
+                    │     │       └ {}
+                    │     └ (('/source/profiler/lib/deployed/jdk15/hpux-pa_risc2.0w/libprofilerinterface.sl', '/workdir/20260417T161435Z_visualvm_144', <...
+                    └ <bound method Parse._observe_worker of <eyeon.parse.Parse object at 0xffff8b35c2d0>>
+  File "/eye/lib/python3.13/site-packages/eyeon/parse.py", line 57, in _observe_worker
+    self._observe((file, result_path))
+    │    │         │     └ '/workdir/20260417T161435Z_visualvm_144'
+    │    │         └ '/source/profiler/lib/deployed/jdk15/hpux-pa_risc2.0w/libprofilerinterface.sl'
+    │    └ <function Parse._observe at 0xffffaec80900>
+    └ <eyeon.parse.Parse object at 0xffff8b35c2d0>
+  File "/eye/lib/python3.13/site-packages/eyeon/parse.py", line 31, in _observe
+    o = Observe(file)
+        │       └ '/source/profiler/lib/deployed/jdk15/hpux-pa_risc2.0w/libprofilerinterface.sl'
+        └ <class 'eyeon.observe.Observe'>
+  File "/eye/lib/python3.13/site-packages/eyeon/observe.py", line 110, in __init__
+    self.set_metadata(file, mgr)
+    │    │            │     └ <pluggy._manager.PluginManager object at 0xffff88ee10d0>
+    │    │            └ '/source/profiler/lib/deployed/jdk15/hpux-pa_risc2.0w/libprofilerinterface.sl'
+    │    └ <function Observe.set_metadata at 0xffffaec802c0>
+    └ <eyeon.observe.Observe object at 0xffff8b507e70>
+> File "/eye/lib/python3.13/site-packages/eyeon/observe.py", line 393, in set_metadata
+    result=plugin.function(**filtered_kwargs)
+           │      │          └ {'sbom': None, 'software': Software(UUID='c74b5ec4-2456-4fc4-9d57-b6f7d47260f5', name=None, size=None, fileName=None, install...
+           │      └ <member 'function' of 'HookImpl' objects>
+           └ <HookImpl plugin_name='surfactant.infoextractors.elf_file', plugin=<module 'surfactant.infoextractors.elf_file' from '/eye/li...
+  File "/eye/lib/python3.13/site-packages/surfactant/infoextractors/elf_file.py", line 27, in extract_file_info
+    return extract_elf_info(filename)
+           │                └ '/source/profiler/lib/deployed/jdk15/hpux-pa_risc2.0w/libprofilerinterface.sl'
+           └ <function extract_elf_info at 0xffff9d90fc40>
+  File "/eye/lib/python3.13/site-packages/surfactant/infoextractors/elf_file.py", line 84, in extract_elf_info
+    for section in elf.iter_sections():
+        │          │   └ <function ELFFile.iter_sections at 0xffff9d9f7420>
+        │          └ <elftools.elf.elffile.ELFFile object at 0xffff8b5fe970>
+        └ <elftools.elf.sections.StringTableSection object at 0xffff88e815b0>
+  File "/eye/lib/python3.13/site-packages/elftools/elf/elffile.py", line 201, in iter_sections
+    section = self.get_section(i)
+              │    │           └ 4
+              │    └ <function ELFFile.get_section at 0xffff9d9f7060>
+              └ <elftools.elf.elffile.ELFFile object at 0xffff8b5fe970>
+  File "/eye/lib/python3.13/site-packages/elftools/elf/elffile.py", line 141, in get_section
+    return self._make_section(section_header)
+           │    │             └ Container({'sh_name': 26, 'sh_type': 'SHT_HASH', 'sh_flags': 2, 'sh_addr': 4611686018427395120, 'sh_offset': 7216, 'sh_size':...
+           │    └ <function ELFFile._make_section at 0xffff9d808180>
+           └ <elftools.elf.elffile.ELFFile object at 0xffff8b5fe970>
+  File "/eye/lib/python3.13/site-packages/elftools/elf/elffile.py", line 736, in _make_section
+    return self._make_elf_hash_section(section_header, name)
+           │    │                      │               └ '.hash'
+           │    │                      └ Container({'sh_name': 26, 'sh_type': 'SHT_HASH', 'sh_flags': 2, 'sh_addr': 4611686018427395120, 'sh_offset': 7216, 'sh_size':...
+           │    └ <function ELFFile._make_elf_hash_section at 0xffff9d808680>
+           └ <elftools.elf.elffile.ELFFile object at 0xffff8b5fe970>
+  File "/eye/lib/python3.13/site-packages/elftools/elf/elffile.py", line 809, in _make_elf_hash_section
+    symtab_section = self._get_linked_symtab_section(linked_symtab_index)
+                     │    │                          └ 0
+                     │    └ <function ELFFile._get_linked_symtab_section at 0xffff9d9f7100>
+                     └ <elftools.elf.elffile.ELFFile object at 0xffff8b5fe970>
+  File "/eye/lib/python3.13/site-packages/elftools/elf/elffile.py", line 150, in _get_linked_symtab_section
+    raise ELFError("Section points at section %d of type %s, expected SHT_SYMTAB/SHT_DYNSYM" % (n, section_header['sh_type']))
+          │                                                                                     │  └ Container({'sh_name': 0, 'sh_type': 'SHT_NULL', 'sh_flags': 0, 'sh_addr': 0, 'sh_offset': 0, 'sh_size': 0, 'sh_link': 0, 'sh_...
+          │                                                                                     └ 0
+          └ <class 'elftools.common.exceptions.ELFError'>
+
+elftools.common.exceptions.ELFError: Section points at section 0 of type SHT_NULL, expected SHT_SYMTAB/SHT_DYNSYM
+Parsing with 4 threads... |████████████████████████████████████████| 399/399 [100%] in 2.9s (135.80/s)
