@@ -1,6 +1,6 @@
 # pEyeON
 
-EyeON is a CLI tool that allows users to get software data pertaining to their machines by performing threat and inventory analysis. It can be used to quickly generate manifests of installed software or potential firmare patches. These manifests are then submitted to a database and LLNL can use them to continuously monitor OT software for threats.
+EyeON is a CLI tool that allows users to collect software metadata from their machines for threat and inventory analysis. It can be used to quickly generate manifests of installed software or potential firmware patches. For deeper analysis and reporting workflows, see the companion project [pEyeON-Analytics](https://github.com/LLNL/pEyeON-Analytics).
 
 [![CI Test Status](https://github.com/LLNL/pEyeON/actions/workflows/unittest.yml/badge.svg)](https://github.com/LLNL/pEyeON/actions/workflows/unittest.yml)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/LLNL/pEyeON/main.svg)]()
@@ -393,8 +393,8 @@ jupyter notebook --ip=0.0.0.0 --no-browser
 Then open the `demo.ipynb` notebook for a quick demonstration.
 
 
-#### Streamlit app
-In the `src` directory, there exist the bones of a data exploration applet. To generate data for this, add the database flag like `eyeon parse -d tests/data/20240925-eyeon/dbhelpers/20240925-eyeon.db`. Then, if necessary, update the database path variable in the `src/streamlit/eyeon_settings.toml`. Note that the path needs to point to the grandparent directory of the `dbhelpers` directory. This is a specific path for the streamlit app; the streamlit directory has more information in its own README.
+#### Analytics
+Database-backed analysis and dashboard workflows now live in [pEyeON-Analytics](https://github.com/LLNL/pEyeON-Analytics). This repository focuses on collection, parsing, and optional Box upload of EyeON results.
 
 ## Uploading Results
 The Eyeon tool leverages the Box platform for data uploads and storage. All data handled by Eyeon is voluntarily submitted by users and securely stored in your Box account. If you wish to share the results of the eyeon tool with us please contact `eyeon@llnl.gov` to get setup.

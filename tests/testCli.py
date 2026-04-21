@@ -121,7 +121,7 @@ class CliTestObserve(unittest.TestCase):
 
 class CliTestParse(unittest.TestCase):
     def setUp(self):
-        # patch parse, write_database, upload and configure logging functions
+        # patch parse, upload and configure logging functions
         parse_patch = patch("eyeon.cli.eyeon.parse.Parse")
         compress_patch=patch("eyeon.cli.eyeon.upload.compress_file")
         upload_patch=patch("eyeon.cli.eyeon.upload.upload")
@@ -150,7 +150,6 @@ class CliTestParse(unittest.TestCase):
         result_path="./results",
         threads=1,
         )
-        self.mock_parse.return_value.write_database.assert_not_called()
         self.mock_compress.assert_not_called()
         self.mock_upload.assert_not_called()
 
@@ -166,28 +165,6 @@ class CliTestParse(unittest.TestCase):
         self.mock_parse.return_value.assert_called_once_with(
         result_path="/tmp/test/outdir",
         threads=1,
-        )
-        self.mock_parse.return_value.write_database.assert_not_called()
-        self.mock_compress.assert_not_called()
-        self.mock_upload.assert_not_called()
-
-
-    def test_parse_database(self):
-        args = ["parse", "/dev/null", "-d", "/tmp/test.db"]
-        cli = CommandLine(args)
-
-        self.assertIsNone(cli.args.output_dir)
-
-        cli.parse(cli.args)
-        self.mock_parse.assert_called_with("/dev/null")
-
-        self.mock_parse.return_value.assert_called_once_with(
-        result_path="./results",
-        threads=1,
-        )
-        self.mock_parse.return_value.write_database.assert_called_with(
-            "/tmp/test.db",
-            "./results"
         )
         self.mock_compress.assert_not_called()
         self.mock_upload.assert_not_called()
@@ -205,7 +182,6 @@ class CliTestParse(unittest.TestCase):
         result_path="./results",
         threads=1,
         )
-        self.mock_parse.return_value.write_database.assert_not_called()
         self.mock_compress.assert_called_with(
             './results',
             compression='tar.gz'

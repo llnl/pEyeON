@@ -40,18 +40,12 @@ class CommandLine:
             help="Set the log level. Defaults to ERROR.",
         )
 
-        # parent parser to add shared arg to both observe and parse
-        db_parser = argparse.ArgumentParser(add_help=False)
-        db_parser.add_argument(
-            "-d", "--database", help="Specify a filepath to save result to duckdb database"
-        )
-
         # Create subparser
         subparsers = parser.add_subparsers(required=True, help="sub-command help")
 
         # Create parser for observe command
         observe_parser = subparsers.add_parser(
-            "observe", help="observe help", parents=[db_parser, shared_args]
+            "observe", help="observe help", parents=[shared_args]
         )
         observe_parser.add_argument("filename", help="Name of file to scan")
         observe_parser.add_argument(
@@ -74,7 +68,7 @@ class CommandLine:
 
         # Create parser for parse command
         parse_parser = subparsers.add_parser(
-            "parse", help="parse help", parents=[db_parser, shared_args]
+            "parse", help="parse help", parents=[shared_args]
         )
         parse_parser.add_argument("dir", help="Name of directory to scan")
         parse_parser.add_argument(
@@ -201,9 +195,6 @@ class CommandLine:
 
         obs.write_json(outdir)
 
-        if args.database:
-            obs.write_database(args.database, outdir)
-
     def parse(self, args) -> None:
         """
         Call to eyeon parser. Runs `observe` on files in path.
@@ -214,9 +205,6 @@ class CommandLine:
             outdir = "./results"
 
         p(result_path=outdir, threads=args.threads)
-
-        if args.database:
-            p.write_database(args.database, outdir)
 
         if args.upload:
             archive_path = eyeon.upload.compress_file(outdir, compression="tar.gz")

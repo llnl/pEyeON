@@ -8,9 +8,7 @@ from importlib.metadata import version
 from loguru import logger
 from .observe import Observe
 import os
-import duckdb
 import time
-from importlib.resources import files
 import threading # allows the monitor to run concurrently without blocking multiprocessing 
 from multiprocessing import Pool, Manager
 from uuid import uuid4
@@ -179,58 +177,3 @@ class Parse:
             #Single process path (no inter‑process monitoring needed)
             for filet in alive_it(files, spinner="waves", title="Parsing files..."):
                 self._observe(filet)
-
-    def write_database(self, database: str, outdir: str = "./results") -> None:
-        """
-        Parse all output json files and add to database
-
-        Parameters
-        ----------
-            database : str
-                The filepath to the duckdb database
-            outdir : str
-                A string specifying where results were saved
-        """
-        if os.path.exists(outdir) and database:
-            try:
-                with alive_bar(
-                    bar=None,
-                    elapsed_end=False,
-                    monitor_end=False,
-                    stats_end=False,
-                    receipt_text=True,
-                    spinner="waves",
-                    stats=False,
-                    monitor=False,
-                ) as bar:
-                    bar.title(f"Writing to database {database}")
-                    db_exists = os.path.exists(database)
-                    db_path = os.path.dirname(database)
-                    if db_path:
-                        os.makedirs(db_path, exist_ok=True)
-                    con = duckdb.connect(database)  # creates or connects
-                    if not db_exists:  # database exists, load the json file in
-                        # create table and views from sql
-                        con.sql(files("database").joinpath("eyeon-ddl.sql").read_text())
-
-                    # add the file to the observations table, making it match template
-                    # observations with missing keys keys with null
-                    con.sql(
-                        f"""
-                    insert into observations by name
-                    select * from
-                    read_json_auto(['{outdir}/*.json',
-                                    '{files('database').joinpath('observations.json')}'],
-                                    union_by_name=true, auto_detect=true)
-                    where filename is not null;
-                    """
-                    )
-                    bar.title("")
-                    bar.text("Database updated")
-                    con.close()
-            except duckdb.IOException as ioe:
-                con = None
-                s = f":exclamation: Failed to attach to db {database}: {ioe}"
-                print(s)
-        else:
-            raise FileNotFoundError

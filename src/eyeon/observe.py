@@ -14,8 +14,6 @@ import subprocess
 import threading
 
 import re
-import duckdb
-from importlib.resources import files
 from importlib.metadata import version
 from pathlib import Path
 import pluggy
@@ -480,49 +478,6 @@ class Observe:
         vs = {k: v for k, v in vs.items() if k != "certs"}
         with open(outfile, "w") as f:
             f.write(self._safe_serialize(vs))
-
-    def write_database(self, database: str, outdir: str = ".") -> None:
-        """
-        Creates or loads json file into duckdb database
-
-        Parameters:
-        -----------
-            database : str
-                Path to duckdb database file.
-            outdir : str
-                Output directory prefix. Defaults to current working directory.
-        """
-        observation_json = f"{os.path.join(outdir, self.filename)}.{self.md5}.json"
-        if os.path.exists(observation_json):
-            try:
-                if not os.path.exists(database):  # create the table if database is new
-                    # create table and views from sql
-                    db_path = os.path.dirname(database)
-                    if db_path != "":
-                        os.makedirs(db_path, exist_ok=True)
-                    con = duckdb.connect(database)  # creates or connects
-                    con.sql(files("database").joinpath("eyeon-ddl.sql").read_text())
-                else:
-                    con = duckdb.connect(database)  # creates or connects
-                # add the file to the observations table, making it match template
-                # observations with missing keys will get null vals as placeholder to match sql
-                con.sql(
-                    f"""
-                insert into observations by name
-                select * from
-                read_json_auto(['{observation_json}',
-                                '{files('database').joinpath('observations.json')}'],
-                                union_by_name=true, auto_detect=true)
-                where filename is not null;
-                """
-                )
-                con.close()
-            except duckdb.IOException as ioe:
-                con = None
-                s = f":exclamation: Failed to attach to db {database}: {ioe}"
-                print(s)
-        else:
-            raise FileNotFoundError
 
     def __str__(self) -> str:
         return pprint.pformat(vars(self), indent=2)
