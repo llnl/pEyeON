@@ -3,6 +3,8 @@ CLI interface for EyeON tools.
 """
 import argparse
 
+import box.box_auth
+import box.box_config
 import eyeon.observe
 import eyeon.parse
 import eyeon.checksum
@@ -112,6 +114,9 @@ class CommandLine:
         )
         upload_parser.set_defaults(func=self.upload)
 
+        auth_parser = subparsers.add_parser("box-auth", help="authenticate with box")
+        auth_parser.set_defaults(func=self.box_authenticate)
+
         # parser for the delete command
         delete_parser = subparsers.add_parser("box-delete", help="delete help")
         delete_parser.add_argument("file", help="target box file to delete")
@@ -220,6 +225,13 @@ class CommandLine:
         upload target file to box
         """
         eyeon.upload.upload(args.file, args.compression)
+
+    def box_authenticate(self, args) -> None:
+        """
+        authenticate with box and persist tokens
+        """
+        settings = box.box_config.get_box_settings()
+        box.box_auth.authenticate_oauth(settings)
 
     def delete(self, args) -> None:
         """

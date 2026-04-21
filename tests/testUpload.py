@@ -1,6 +1,5 @@
 import unittest
 import eyeon.upload
-import pandas as pd
 import os
 
 # import shutil
@@ -73,16 +72,17 @@ class TestListBoxItems(unittest.TestCase):
         mock_get_box_client.return_value = mock_client
 
         # Run
-        df = eyeon.upload.list_box_items()
+        with patch("builtins.print"):
+            rows = eyeon.upload.list_box_items()
 
-        # Assert DataFrame contents
-        self.assertIsInstance(df, pd.DataFrame)
-        self.assertEqual(df.iloc[0]["Filename"], "test.txt")
-        self.assertEqual(df.iloc[0]["ID"], "999")
-        self.assertEqual(df.iloc[0]["Size"], 123)
-        self.assertEqual(df.iloc[0]["Created"], "2023-01-01")
-        self.assertEqual(df.iloc[0]["Modified"], "2023-01-02")
-        self.assertEqual(df.iloc[0]["Uploaded by"], "Alice")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["Type"], "file")
+        self.assertEqual(rows[0]["Filename"], "test.txt")
+        self.assertEqual(rows[0]["ID"], "999")
+        self.assertEqual(rows[0]["Size"], 123)
+        self.assertEqual(rows[0]["Created"], "2023-01-01")
+        self.assertEqual(rows[0]["Modified"], "2023-01-02")
+        self.assertEqual(rows[0]["Uploaded by"], "Alice")
 
     @patch("eyeon.upload.get_box_client")
     @patch("eyeon.upload.box_config.get_box_settings")
@@ -103,21 +103,40 @@ class TestListBoxItems(unittest.TestCase):
         mock_user.created_at = "2023-01-01"
         mock_user.modified_at = "2023-01-02"
         mock_user.created_by.name = "Alice"
-        mock_client.file.return_value.get.return_value = mock_user
+        mock_folder.get.return_value = mock_user
 
         mock_folder.get_items.return_value = [mock_item_file]
         mock_client.folder.return_value = mock_folder
         mock_get_box_client.return_value = mock_client
 
-        df = eyeon.upload.list_box_items()
+        with patch("builtins.print"):
+            rows = eyeon.upload.list_box_items()
 
-        assert not df.empty
-        assert df.iloc[0]["Filename"] == "TestFolder"
-        assert df.iloc[0]["ID"] == "001"
-        assert df.iloc[0]["Size"] == 0
-        assert df.iloc[0]["Created"] == "2023-01-01"
-        assert df.iloc[0]["Modified"] == "2023-01-02"
-        assert df.iloc[0]["Uploaded by"] == "Alice"
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["Type"], "folder")
+        self.assertEqual(rows[0]["Filename"], "TestFolder")
+        self.assertEqual(rows[0]["ID"], "001")
+        self.assertEqual(rows[0]["Size"], 0)
+        self.assertEqual(rows[0]["Created"], "2023-01-01")
+        self.assertEqual(rows[0]["Modified"], "2023-01-02")
+        self.assertEqual(rows[0]["Uploaded by"], "Alice")
+
+    @patch("eyeon.upload.get_box_client")
+    @patch("eyeon.upload.box_config.get_box_settings")
+    def test_list_box_items_empty(self, mock_settings, mock_get_box_client):
+        mock_settings.return_value = self.dummy_box_settings
+
+        mock_client = MagicMock()
+        mock_folder = MagicMock()
+        mock_folder.get_items.return_value = []
+        mock_client.folder.return_value = mock_folder
+        mock_get_box_client.return_value = mock_client
+
+        with patch("builtins.print") as mock_print:
+            rows = eyeon.upload.list_box_items()
+
+        self.assertEqual(rows, [])
+        mock_print.assert_called_once_with("No items found in the configured Box folder.")
 
 
 class TestDeleteFile(unittest.TestCase):
@@ -250,6 +269,19 @@ class TestUpload(unittest.TestCase):
         with patch("os.path.splitext", return_value=("foo", ".txt")):
             eyeon.upload.upload("foo.txt", compression="tar")
             mock_compress.assert_called_once_with("foo.txt", "tar")
+
+    @patch("eyeon.upload.get_box_client")
+    @patch("eyeon.upload.box_config.get_box_settings")
+    @patch("eyeon.upload.compress_file", return_value=None)
+    def test_upload_stops_when_compression_fails(
+        self, mock_compress, mock_settings, mock_get_box_client
+    ):
+        with patch("os.path.splitext", return_value=("foo", ".txt")):
+            eyeon.upload.upload("foo.txt", compression="tar")
+
+        mock_compress.assert_called_once_with("foo.txt", "tar")
+        mock_settings.assert_not_called()
+        mock_get_box_client.assert_not_called()
 
 
 class TestCompression(unittest.TestCase):

@@ -3,7 +3,7 @@ import tempfile
 import shutil
 
 from eyeon.cli import CommandLine
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from pathlib import Path
 
 
@@ -187,6 +187,63 @@ class CliTestParse(unittest.TestCase):
             compression='tar.gz'
         )
         self.mock_upload.assert_called_once()
+
+
+class CliTestBoxCommands(unittest.TestCase):
+    def setUp(self):
+        self.upload_patch = patch("eyeon.cli.eyeon.upload.upload")
+        self.delete_patch = patch("eyeon.cli.eyeon.upload.delete_file")
+        self.list_patch = patch("eyeon.cli.eyeon.upload.list_box_items")
+        self.compress_patch = patch("eyeon.cli.eyeon.upload.compress_file")
+        self.auth_patch = patch("eyeon.cli.box.box_auth.authenticate_oauth")
+        self.settings_patch = patch("eyeon.cli.box.box_config.get_box_settings")
+        self.log_patcher = patch("eyeon.cli.CommandLine._configure_logger", return_value=None)
+
+        self.mock_upload = self.upload_patch.start()
+        self.mock_delete = self.delete_patch.start()
+        self.mock_list = self.list_patch.start()
+        self.mock_compress = self.compress_patch.start()
+        self.mock_auth = self.auth_patch.start()
+        self.mock_settings = self.settings_patch.start()
+        self.mock_log = self.log_patcher.start()
+
+        self.addCleanup(self.upload_patch.stop)
+        self.addCleanup(self.delete_patch.stop)
+        self.addCleanup(self.list_patch.stop)
+        self.addCleanup(self.compress_patch.stop)
+        self.addCleanup(self.auth_patch.stop)
+        self.addCleanup(self.settings_patch.stop)
+        self.addCleanup(self.log_patcher.stop)
+
+    def test_box_upload(self):
+        cli = CommandLine(["box-upload", "archive.tar.gz"])
+        cli.upload(cli.args)
+        self.mock_upload.assert_called_once_with("archive.tar.gz", None)
+
+    def test_box_delete(self):
+        cli = CommandLine(["box-delete", "123"])
+        cli.delete(cli.args)
+        self.mock_delete.assert_called_once_with("123")
+
+    def test_box_list(self):
+        cli = CommandLine(["box-list"])
+        cli.listbox(cli.args)
+        self.mock_list.assert_called_once_with()
+
+    def test_compress(self):
+        cli = CommandLine(["compress", "archive", "--method", "tar.gz"])
+        cli.compress_file(cli.args)
+        self.mock_compress.assert_called_once_with("archive", "tar.gz")
+
+    def test_box_auth(self):
+        settings = MagicMock()
+        self.mock_settings.return_value = settings
+
+        cli = CommandLine(["box-auth"])
+        cli.box_authenticate(cli.args)
+
+        self.mock_settings.assert_called_once_with()
+        self.mock_auth.assert_called_once_with(settings)
 
 class CliTestLogger(unittest.TestCase):
     def setUp(self):

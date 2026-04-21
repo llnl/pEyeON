@@ -400,28 +400,19 @@ Database-backed analysis and dashboard workflows now live in [pEyeON-Analytics](
 The Eyeon tool leverages the Box platform for data uploads and storage. All data handled by Eyeon is voluntarily submitted by users and securely stored in your Box account. If you wish to share the results of the eyeon tool with us please contact `eyeon@llnl.gov` to get setup.
 
 #### Authenticating with Box
-To use Eyeon with Box, you’ll need to generate a `box_tokens.json` file. This process requires a browser-friendly environment and will vary depending on your Eyeon build selection. Below are the steps when using a container setup:
+To use Eyeon with Box, first configure your local Box settings and then generate a `box_tokens.json` file from a browser-friendly environment.
 
 **Steps**:
 
-1. Create a Python virtual environment within the `PEYEON/` directory:
+1. Install EyeON in an environment where you can open a web browser.
+
+2. Run the Box authentication command:
+
 ```bash
-python -m venv .venv
-source .venv/bin/activate
+eyeon box-auth
 ```
-2. Install the Box SDK:
-```bash
-pip install boxsdk==3.14.0
-```
-3. Change into the `src/` directory:
-```bash
-cd src/
-```
-4. Start the authentication process:
-```bash
-python -m box.box_auth
-```
-This will guide you through authenticating with Box in your browser.
+
+This will guide you through authenticating with Box in your browser and store your local tokens for later CLI use.
 
 Once authentication is complete and your `box_tokens.json` file is generated, you can start the Eyeon Docker container and use the commands listed below.
 
@@ -431,6 +422,14 @@ eyeon box-list
 ```
 
 Displays all items in your connected Box folder.
+
+#### Delete a File from Box
+
+```bash
+eyeon box-delete <file-or-id>
+```
+
+Deletes the specified file from your connected Box folder.
 
 #### Upload Results to Box
 

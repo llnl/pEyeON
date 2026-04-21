@@ -28,7 +28,6 @@ dependencies=[
     "coverage >= 7.5.3",
     "alive_progress >= 3.1.5",
     "dynaconf>=3.2.6",
-    "streamlit>=1.37.0",
     "jupyter>=1.1.1",
     # "oidc-client>=0.2.6",
     "requests>=2.32.4",

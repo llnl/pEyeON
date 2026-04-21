@@ -1,11 +1,14 @@
 from box import box_auth, box_config
 from boxsdk import Client
 
-import pandas as pd
 import os
-import zipfile
-import tarfile
 import shutil
+import tarfile
+import zipfile
+
+
+BOX_LIST_HEADERS = ["Type", "Filename", "ID", "Size", "Created", "Modified", "Uploaded by"]
+ALLOWED_ARCHIVE_EXTENSIONS = (".zip", ".tar", ".gz")
 
 
 def get_box_client() -> Client:
@@ -17,46 +20,68 @@ def get_box_client() -> Client:
     return client
 
 
-def list_box_items():
+def _get_box_folder():
     settings = box_config.get_box_settings()
     client = get_box_client()
+    return client, client.folder(settings.FOLDER)
 
-    data = pd.DataFrame(columns=["Filename", "ID", "Size", "Created", "Modified", "Uploaded by"])
 
-    for item in client.folder(settings.FOLDER).get_items(limit=1000):
-        # Get extra fields beyond the minimal.
-        user = client.file(item.id).get(fields=["created_by", "size", "created_at", "modified_at"])
-        if item.type == "file":
-            new_data = {
+def _get_item_details(client: Client, item):
+    get_item = client.file if item.type == "file" else client.folder
+    return get_item(item.id).get(fields=["created_by", "size", "created_at", "modified_at"])
+
+
+def _print_box_rows(rows) -> None:
+    widths = {header: len(header) for header in BOX_LIST_HEADERS}
+    for row in rows:
+        for header in BOX_LIST_HEADERS:
+            widths[header] = max(widths[header], len(str(row[header])))
+
+    header_line = "  ".join(
+        f"{header:<{widths[header]}}" for header in BOX_LIST_HEADERS
+    )
+    separator_line = "  ".join("-" * widths[header] for header in BOX_LIST_HEADERS)
+    print(header_line)
+    print(separator_line)
+    for row in rows:
+        print(
+            "  ".join(
+                f"{str(row[header]):<{widths[header]}}" for header in BOX_LIST_HEADERS
+            )
+        )
+
+
+def list_box_items():
+    client, folder = _get_box_folder()
+
+    rows = []
+    for item in folder.get_items(limit=1000):
+        details = _get_item_details(client, item)
+        rows.append(
+            {
+                "Type": item.type,
                 "Filename": item.name,
                 "ID": item.id,
-                "Size": user.size,
-                "Created": user.created_at,
-                "Modified": user.modified_at,
-                "Uploaded by": user.created_by.name,
+                "Size": details.size,
+                "Created": details.created_at,
+                "Modified": details.modified_at,
+                "Uploaded by": details.created_by.name,
             }
-            data = pd.concat([data, pd.DataFrame([new_data])], ignore_index=True)
+        )
 
-        elif item.type == "folder":
-            new_data = {
-                "Filename": item.name,
-                "ID": item.id,
-                "Size": user.size,
-                "Created": user.created_at,
-                "Modified": user.modified_at,
-                "Uploaded by": user.created_by.name,
-            }
-            data = pd.concat([data, pd.DataFrame([new_data])], ignore_index=True)
-    print(data)
-    return data
+    if not rows:
+        print("No items found in the configured Box folder.")
+        return rows
+
+    _print_box_rows(rows)
+    return rows
 
 
 def delete_file(file: str):
     """
     delete target file by name or ID
     """
-    settings = box_config.get_box_settings()
-    client = get_box_client()
+    client, folder = _get_box_folder()
 
     if file.isdigit():
         # if the file is all digit assume they are trying to delete based on item id
@@ -69,28 +94,18 @@ def delete_file(file: str):
             print(f"File with ID {file_id} not found or could not be deleted: {e}")
         return
 
-    elif not file.isdigit():
-        folder = client.folder(settings.FOLDER)
-        file_name = file.split("/")[-1]  # need to split as file is path with path
-        # Delete existing file with same name
-        found = False
-        for item in folder.get_items(limit=1000):
-            if item.type == "file" and item.name == file_name:
-                print(f"Deleting file '{file_name}' (ID: {item.id})")
-                item.delete()
-                found = True
-                break
-        if not found:
-            print(f"File named '{file_name}' not found in folder.")
-        return
+    file_name = os.path.basename(file)
+    for item in folder.get_items(limit=1000):
+        if item.type == "file" and item.name == file_name:
+            print(f"Deleting file '{file_name}' (ID: {item.id})")
+            item.delete()
+            return
 
-    else:
-        print("Invalid input type. Must be file name or ID")
-        return
+    print(f"File named '{file_name}' not found in folder.")
 
 
 def compress_file(file: str, compression: str):
-    #currently creates the archive in the directory the tool is ran from 
+    # currently creates the archive in the directory the tool is run from
     # normalize path to remove trailing slashes for renaming/extensions
     file = os.path.normpath(file)
     # get just the directory or file name (not the full path or extension)
@@ -124,24 +139,21 @@ def upload(file: str, compression: str = None):
     """
     upload target file
     """
-    allowed_ext = [".zip", ".tar", ".gz"]
-
     _, ext = os.path.splitext(file)
 
     # If file is not compressed and compression is specified, compress it.
-    if ext.lower() not in allowed_ext:
+    if ext.lower() not in ALLOWED_ARCHIVE_EXTENSIONS:
         if compression:
             file = compress_file(file, compression)
-            _, new_ext = os.path.splitext(file)
+            if file is None:
+                return
         else:
             print(
                 "Please compress into one of the following formats: "
-                f"{allowed_ext} or specify -z {allowed_ext} option."
+                f"{list(ALLOWED_ARCHIVE_EXTENSIONS)} or specify -z <format>."
             )
             return
 
-    settings = box_config.get_box_settings()
-    client = get_box_client()
-
-    new_file = client.folder(settings.FOLDER).upload(file)
+    _, folder = _get_box_folder()
+    new_file = folder.upload(file)
     print(f"Uploaded {file!r} as file ID {new_file.id}")
