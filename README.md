@@ -57,16 +57,21 @@ For most users, the recommended container workflow is `eyeon-parse.sh` plus `eye
 #### Published Multi-Arch Image
 The primary container image is published to GHCR as a multi-arch image. The same tag works on both `amd64` and `arm64` hosts, and Docker will pull the matching architecture automatically.
 
+For normal users and production workflows, use the released `latest` tag from `main`.
+
 ```bash
 docker pull ghcr.io/llnl/peyeon:latest
 docker run --rm ghcr.io/llnl/peyeon:latest eyeon --help
 ```
 
-To test a development image without touching the released image, override the tag explicitly:
+For branch validation and other development work, use a branch-scoped or commit-scoped dev tag from the same package instead of `latest`:
 
 ```bash
-docker pull ghcr.io/llnl/peyeon-dev:dev
-docker run --rm ghcr.io/llnl/peyeon-dev:dev eyeon --help
+docker pull ghcr.io/llnl/peyeon:dev-<branch>
+docker run --rm ghcr.io/llnl/peyeon:dev-<branch> eyeon --help
+
+docker pull ghcr.io/llnl/peyeon:dev-<sha>
+docker run --rm ghcr.io/llnl/peyeon:dev-<sha> eyeon --help
 ```
 
 #### Local Docker Build
@@ -188,10 +193,11 @@ By default the wrapper uses the published production image:
 ghcr.io/llnl/peyeon:latest
 ```
 
-To test a dev image, override `EYEON_IMAGE`:
+To test a branch image without touching `latest`, override `EYEON_IMAGE`:
 
 ```bash
-EYEON_IMAGE=ghcr.io/llnl/peyeon-dev:dev ./eyeon-parse.sh TESTSITE ./samples /data/eyeon
+EYEON_IMAGE=ghcr.io/llnl/peyeon:dev-<branch> ./eyeon-parse.sh TESTSITE ./samples /data/eyeon
+EYEON_IMAGE=ghcr.io/llnl/peyeon:dev-<sha> ./eyeon-parse.sh TESTSITE ./samples /data/eyeon
 ```
 
 #### Runtime Selection

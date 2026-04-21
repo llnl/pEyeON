@@ -24,7 +24,7 @@ set -euo pipefail
 #   DEBUG=1            (print docker/env details and launch an interactive debug shell)
 #
 # Example dev image override:
-#   EYEON_IMAGE=ghcr.io/llnl/peyeon-dev:dev-<sha> ./eyeon-parse.sh UTIL_CD SOURCE
+#   EYEON_IMAGE=ghcr.io/llnl/peyeon:dev-<sha> ./eyeon-parse.sh UTIL_CD SOURCE
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SETTINGS_FILE="${SCRIPT_DIR}/EyeOnData.toml"
