@@ -106,12 +106,17 @@ resolve_runtime() {
 
   local has_docker=0
   local has_podman=0
+  local docker_path=""
+  local podman_path=""
 
-  if command -v docker >/dev/null 2>&1; then
+  docker_path="$(type -P docker 2>/dev/null || true)"
+  podman_path="$(type -P podman 2>/dev/null || true)"
+
+  if [[ -n "$docker_path" && -x "$docker_path" ]]; then
     has_docker=1
   fi
 
-  if command -v podman >/dev/null 2>&1; then
+  if [[ -n "$podman_path" && -x "$podman_path" ]]; then
     has_podman=1
   fi
 
