@@ -3,6 +3,8 @@ CLI interface for EyeON tools.
 """
 import argparse
 
+import box.box_auth
+import box.box_config
 import eyeon.observe
 import eyeon.parse
 import eyeon.checksum
@@ -40,18 +42,12 @@ class CommandLine:
             help="Set the log level. Defaults to ERROR.",
         )
 
-        # parent parser to add shared arg to both observe and parse
-        db_parser = argparse.ArgumentParser(add_help=False)
-        db_parser.add_argument(
-            "-d", "--database", help="Specify a filepath to save result to duckdb database"
-        )
-
         # Create subparser
         subparsers = parser.add_subparsers(required=True, help="sub-command help")
 
         # Create parser for observe command
         observe_parser = subparsers.add_parser(
-            "observe", help="observe help", parents=[db_parser, shared_args]
+            "observe", help="observe help", parents=[shared_args]
         )
         observe_parser.add_argument("filename", help="Name of file to scan")
         observe_parser.add_argument(
@@ -74,7 +70,7 @@ class CommandLine:
 
         # Create parser for parse command
         parse_parser = subparsers.add_parser(
-            "parse", help="parse help", parents=[db_parser, shared_args]
+            "parse", help="parse help", parents=[shared_args]
         )
         parse_parser.add_argument("dir", help="Name of directory to scan")
         parse_parser.add_argument(
@@ -118,6 +114,9 @@ class CommandLine:
         )
         upload_parser.set_defaults(func=self.upload)
 
+        auth_parser = subparsers.add_parser("box-auth", help="authenticate with box")
+        auth_parser.set_defaults(func=self.box_authenticate)
+
         # parser for the delete command
         delete_parser = subparsers.add_parser("box-delete", help="delete help")
         delete_parser.add_argument("file", help="target box file to delete")
@@ -142,7 +141,7 @@ class CommandLine:
         compression_parser.set_defaults(func=self.compress_file)
 
         # new
-        if testargs:
+        if testargs is not None:
             self.args = parser.parse_args(testargs)
         else:
             self.args = parser.parse_args()
@@ -201,9 +200,6 @@ class CommandLine:
 
         obs.write_json(outdir)
 
-        if args.database:
-            obs.write_database(args.database, outdir)
-
     def parse(self, args) -> None:
         """
         Call to eyeon parser. Runs `observe` on files in path.
@@ -214,9 +210,6 @@ class CommandLine:
             outdir = "./results"
 
         p(result_path=outdir, threads=args.threads)
-
-        if args.database:
-            p.write_database(args.database, outdir)
 
         if args.upload:
             archive_path = eyeon.upload.compress_file(outdir, compression="tar.gz")
@@ -232,6 +225,13 @@ class CommandLine:
         upload target file to box
         """
         eyeon.upload.upload(args.file, args.compression)
+
+    def box_authenticate(self, args) -> None:
+        """
+        authenticate with box and persist tokens
+        """
+        settings = box.box_config.get_box_settings()
+        box.box_auth.authenticate_oauth(settings)
 
     def delete(self, args) -> None:
         """

@@ -1,14 +1,17 @@
 from alive_progress import alive_bar, alive_it
 from typing import Any
 
+import datetime
+import hashlib
+import json
+from importlib.metadata import version
 from loguru import logger
 from .observe import Observe
 import os
-import duckdb
 import time
-from importlib.resources import files
 import threading # allows the monitor to run concurrently without blocking multiprocessing 
 from multiprocessing import Pool, Manager
+from uuid import uuid4
 
 
 class Parse:
@@ -25,6 +28,51 @@ class Parse:
     def __init__(self, dirpath: str) -> None:
         self.path = dirpath
 
+    @staticmethod
+    def _create_hash(file: str, algorithm: str) -> str:
+        hashers = {
+            "md5": hashlib.md5,
+            "sha1": hashlib.sha1,
+            "sha256": hashlib.sha256,
+        }
+        with open(file, "rb") as f:
+            h = hashers[algorithm]()
+            h.update(f.read())
+            return h.hexdigest()
+
+    def _write_error_json(self, file: str, result_path: str, message: str) -> None:
+        stat = os.stat(file)
+        observation = {
+            "uuid": str(uuid4()),
+            "bytecount": stat.st_size,
+            "filename": os.path.basename(file),
+            "filetype": [],
+            "metadata": {
+                "error": {
+                    "message": message,
+                }
+            },
+            "magic": "",
+            "modtime": datetime.datetime.fromtimestamp(
+                stat.st_mtime, tz=datetime.timezone.utc
+            ).strftime("%Y-%m-%d %H:%M:%S"),
+            "observation_ts": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "permissions": oct(stat.st_mode),
+            "md5": self._create_hash(file, "md5"),
+            "sha1": self._create_hash(file, "sha1"),
+            "sha256": self._create_hash(file, "sha256"),
+            "signatures": [],
+            "eyeon_version": version("peyeon"),
+        }
+
+        os.makedirs(result_path, exist_ok=True)
+        outfile = os.path.join(
+            result_path, f"{observation['filename']}.{observation['md5']}.json"
+        )
+
+        with open(outfile, "w") as f:
+            json.dump(observation, f)
+
     def _observe(self, file_and_path: tuple) -> None:
         file, result_path = file_and_path
         try:
@@ -34,6 +82,9 @@ class Parse:
             logger.warning(f"File {file} cannot be read.")
         except FileNotFoundError:
             logger.warning(f"No such file {file}.")
+        except Exception as e:
+            logger.exception(f"Observation failed for {file}: {e}")
+            self._write_error_json(file, result_path, str(e))
 
     def _observe_worker(self, args) -> None:
         """
@@ -126,58 +177,3 @@ class Parse:
             #Single process path (no inter‑process monitoring needed)
             for filet in alive_it(files, spinner="waves", title="Parsing files..."):
                 self._observe(filet)
-
-    def write_database(self, database: str, outdir: str = "./results") -> None:
-        """
-        Parse all output json files and add to database
-
-        Parameters
-        ----------
-            database : str
-                The filepath to the duckdb database
-            outdir : str
-                A string specifying where results were saved
-        """
-        if os.path.exists(outdir) and database:
-            try:
-                with alive_bar(
-                    bar=None,
-                    elapsed_end=False,
-                    monitor_end=False,
-                    stats_end=False,
-                    receipt_text=True,
-                    spinner="waves",
-                    stats=False,
-                    monitor=False,
-                ) as bar:
-                    bar.title(f"Writing to database {database}")
-                    db_exists = os.path.exists(database)
-                    db_path = os.path.dirname(database)
-                    if db_path:
-                        os.makedirs(db_path, exist_ok=True)
-                    con = duckdb.connect(database)  # creates or connects
-                    if not db_exists:  # database exists, load the json file in
-                        # create table and views from sql
-                        con.sql(files("database").joinpath("eyeon-ddl.sql").read_text())
-
-                    # add the file to the observations table, making it match template
-                    # observations with missing keys keys with null
-                    con.sql(
-                        f"""
-                    insert into observations by name
-                    select * from
-                    read_json_auto(['{outdir}/*.json',
-                                    '{files('database').joinpath('observations.json')}'],
-                                    union_by_name=true, auto_detect=true)
-                    where filename is not null;
-                    """
-                    )
-                    bar.title("")
-                    bar.text("Database updated")
-                    con.close()
-            except duckdb.IOException as ioe:
-                con = None
-                s = f":exclamation: Failed to attach to db {database}: {ioe}"
-                print(s)
-        else:
-            raise FileNotFoundError

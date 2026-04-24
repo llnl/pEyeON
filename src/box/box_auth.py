@@ -6,7 +6,9 @@ from queue import Queue, Empty
 
 from boxsdk import OAuth2, Client
 from box.box_config import get_box_settings, store_tokens_callback, load_tokens, BoxSettings
-from pathlib import Path
+
+
+SUCCESS_HTML = b"""<html><body><h2>Authentication successful!</h2><p>You can close this window and return to the EyeON CLI.</p></body></html>"""
 
 
 # ─── LOCAL HTTP SERVER FOR CALLBACK ────────────────────────────────────────────
@@ -32,18 +34,7 @@ class OAuthCallbackHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-type", "text/html")
             self.end_headers()
-            try:
-                html_path = f"{Path(__file__).parent}/auth_success.html"
-                with open(html_path, "rb") as file:
-                    html_content = file.read()
-                    self.wfile.write(html_content)
-
-            except FileNotFoundError:
-                # Fallback to the original message if the file is not found
-                self.wfile.write(
-                    b"<html><body><h2>Authentication successful!</h2>"
-                    b"You can close this window.</body></html>"
-                )
+            self.wfile.write(SUCCESS_HTML)
             # Shutdown server
             threading.Thread(target=self.server.shutdown, daemon=True).start()
         else:
@@ -110,9 +101,9 @@ def authenticate_oauth(settings: BoxSettings) -> Client:
 
 def main():
     """
-    run this script independently to generate the box-tokens in a browser friendly environment
+    run this script independently to generate box tokens in a browser friendly environment
 
-    from src/ directory run 'python -m box.box_auth'
+    The preferred user-facing entry point is 'eyeon box-auth'.
     """
     settings = get_box_settings()
     authenticate_oauth(settings)

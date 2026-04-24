@@ -16,3 +16,6 @@ build
 .venv
 .coverage
 box_tokens.json
+
+# Build artifacts
+eye/

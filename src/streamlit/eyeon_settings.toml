@@ -1,6 +1,0 @@
-[datasets]
-dataset_path = "../../tests/data/"
-
-[app]
-page_title="EyeOn Explorer"
-logo="common/EyeON_logo.png"

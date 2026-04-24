@@ -1,6 +1,6 @@
 import unittest
 
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import patch, MagicMock
 from queue import Queue
 from box import box_auth
 
@@ -16,7 +16,7 @@ class TestOAuthCallbackHandler(unittest.TestCase):
     @patch("box.box_auth.OAuthCallbackHandler.send_response")
     @patch("box.box_auth.OAuthCallbackHandler.send_header")
     @patch("box.box_auth.OAuthCallbackHandler.end_headers")
-    def test_do_GET_with_code_file_found(
+    def test_do_GET_with_code(
         self, mock_end_headers, mock_send_header, mock_send_response
     ):
         handler = self.handler
@@ -27,46 +27,14 @@ class TestOAuthCallbackHandler(unittest.TestCase):
         handler.send_header = MagicMock()
         handler.end_headers = MagicMock()
 
-        # Simulate file found
-        fake_html = b"<html>Success file</html>"
-        m = mock_open(read_data=fake_html)
-        with patch("builtins.open", m):
-            with patch("threading.Thread") as mock_thread:
-                handler.do_GET(handler)
-                self.assertEqual(self.queue.get(), "abc123")
-                handler.send_response.assert_called_with(200)
-                handler.send_header.assert_called_with("Content-type", "text/html")
-                handler.end_headers.assert_called()
-                handler.wfile.write.assert_called_with(fake_html)
-                mock_thread.assert_called()
-
-    @patch("box.box_auth.OAuthCallbackHandler.send_response")
-    @patch("box.box_auth.OAuthCallbackHandler.send_header")
-    @patch("box.box_auth.OAuthCallbackHandler.end_headers")
-    def test_do_GET_with_code_file_not_found(
-        self, mock_end_headers, mock_send_header, mock_send_response
-    ):
-        handler = self.handler
-        handler.path = "/?code=abc123"
-        handler.server = self.server
-        handler.wfile = MagicMock()
-        handler.send_response = MagicMock()
-        handler.send_header = MagicMock()
-        handler.end_headers = MagicMock()
-
-        # Simulate file not found
-        with patch("builtins.open", side_effect=FileNotFoundError):
-            with patch("threading.Thread") as mock_thread:
-                handler.do_GET(handler)
-                self.assertEqual(self.queue.get(), "abc123")
-                handler.send_response.assert_called_with(200)
-                handler.send_header.assert_called_with("Content-type", "text/html")
-                handler.end_headers.assert_called()
-                handler.wfile.write.assert_called_with(
-                    b"<html><body><h2>Authentication successful!</h2>"
-                    b"You can close this window.</body></html>"
-                )
-                mock_thread.assert_called()
+        with patch("threading.Thread") as mock_thread:
+            handler.do_GET(handler)
+            self.assertEqual(self.queue.get(), "abc123")
+            handler.send_response.assert_called_with(200)
+            handler.send_header.assert_called_with("Content-type", "text/html")
+            handler.end_headers.assert_called()
+            handler.wfile.write.assert_called_with(box_auth.SUCCESS_HTML)
+            mock_thread.assert_called()
 
     @patch("box.box_auth.OAuthCallbackHandler.send_error")
     def test_do_GET_missing_code(self, mock_send_error):
