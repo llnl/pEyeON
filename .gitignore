@@ -22,3 +22,5 @@ eye/
 
 # VM build outputs
 builds/vm/output/
+
+uv.lock
